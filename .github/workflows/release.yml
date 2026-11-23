@@ -79,22 +79,15 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [ "${{ github.ref_name }}" = "test" ]; then
-            gh release edit "v$VERSION" --draft=false --prerelease --target "$GITHUB_SHA"
-          else
-            gh release edit "v$VERSION" --draft=false --latest --target "$GITHUB_SHA"
+          REPO="${{ github.repository }}"
+          # Con el token del workflow el listado incluye borradores.
+          ID=$(gh api "repos/$REPO/releases?per_page=30" --jq ".[] | select(.tag_name == \"v$VERSION\") | .id" | head -n 1)
+          if [ -z "$ID" ]; then
+            echo "::error::No se encontró la release borrador v$VERSION"
+            exit 1
           fi
-          gh release view "v$VERSION" --json tagName,isPrerelease,assets --jq '{tag: .tagName, prerelease: .isPrerelease, assets: [.assets[].name]}'
-
-      # Releases publicadas sin instalador (p. ej. intentos fallidos) confunden al actualizador: se borran.
-      - name: Limpiar releases incompletas
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh api "repos/${{ github.repository }}/releases?per_page=100" \
-            --jq '.[] | select(.draft == false) | select([.assets[].name | endswith(".exe")] | any | not) | .tag_name' |
-          while read -r tag; do
-            echo "Borrando release incompleta $tag"
-            gh release delete "$tag" --yes --cleanup-tag
-          done
+          if [ "${{ github.ref_name }}" = "test" ]; then PRE=true; LATEST=false; else PRE=false; LATEST=true; fi
+          gh api -X PATCH "repos/$REPO/releases/$ID" \
+            -F draft=false -F prerelease=$PRE -f make_latest=$LATEST -f target_commitish="$GITHUB_SHA" \
+            --jq '"Publicada \(.tag_name) (prerelease=\(.prerelease), draft=\(.draft)) con: \([.assets[].name] | join(", "))"' |
+            while IFS= read -r line; do echo "::notice::$line"; done
