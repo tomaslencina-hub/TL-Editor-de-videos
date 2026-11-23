@@ -5,12 +5,20 @@ import { Commands } from '../commands/command';
 import { TL_API } from '../ipc/tl-api';
 import { ProjectStore } from '../state/project-store';
 import { newId } from '../timeline/timeline-ops';
+import { canDecodeVideo } from './decodability';
 
 /** Datos derivados de un medio, generados en runtime (no se guardan en el .vproj). */
 export interface MediaAssets {
   thumbnail?: string;
   waveform?: WaveformData;
   missing?: boolean;
+  /**
+   * Copia intermedia H.264 para formatos que WebCodecs/Chromium no decodifican (ProRes, AVI…).
+   * La vista previa y la composición de la exportación leen de acá; el audio sigue saliendo del original.
+   */
+  decodePath?: string;
+  /** Se está generando la copia intermedia. */
+  preparing?: boolean;
 }
 
 export interface ImportReport {
@@ -102,7 +110,31 @@ export class MediaLibraryService {
           .catch((e: unknown) => console.warn('Onda de audio', media.path, e)),
       );
     }
+    if (media.hasVideo) tasks.push(this.ensureDecodable(media));
     await Promise.all(tasks);
+  }
+
+  /** Si el video no se puede decodificar en el renderer, genera (o reutiliza) una copia intermedia H.264. */
+  private async ensureDecodable(media: MediaSource): Promise<void> {
+    if (await canDecodeVideo(this.api.mediaUrl(media.path))) return;
+    this.patch(media.id, { preparing: true });
+    try {
+      const decodePath = await this.api.makeIntermediate(media.path);
+      this.patch(media.id, { decodePath, preparing: false });
+    } catch (e) {
+      this.patch(media.id, { preparing: false });
+      console.warn('Copia intermedia', media.path, e);
+    }
+  }
+
+  /** Archivo del que se leen los cuadros de video (original o copia intermedia). */
+  playbackPath(media: MediaSource): string {
+    return this.assets().get(media.id)?.decodePath ?? media.path;
+  }
+
+  /** Espera a que terminen las copias intermedias en preparación (antes de exportar). */
+  get preparingCount(): number {
+    return [...this.assets().values()].filter((a) => a.preparing).length;
   }
 
   private patch(id: Id, patch: MediaAssets): void {

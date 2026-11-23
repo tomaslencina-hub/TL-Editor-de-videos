@@ -1,23 +1,29 @@
 import type { Clip, Track } from './model';
 
 /**
- * Tipos de transición soportados. Los nombres coinciden con el filtro `xfade` de FFmpeg
- * (exportación); la vista previa los emula con CSS (ver transition-styles.ts en el renderer).
+ * Tipos de transición soportados. Los nombres (y las fórmulas) siguen al filtro `xfade` de FFmpeg;
+ * se dibujan con shaders WebGL en el renderer (src/app/core/render/shaders.ts), los mismos para
+ * la vista previa y la exportación.
  */
 export const TRANSITION_TYPES = [
   'fade',
   'fadeblack',
+  'dissolve',
   'wipeleft',
   'wiperight',
   'wipeup',
   'wipedown',
+  'smoothleft',
+  'smoothright',
   'slideleft',
   'slideright',
   'slideup',
   'slidedown',
   'circleopen',
   'circleclose',
+  'radial',
   'zoomin',
+  'pixelize',
 ] as const;
 
 export type TransitionType = (typeof TRANSITION_TYPES)[number];
@@ -25,6 +31,11 @@ export type TransitionType = (typeof TRANSITION_TYPES)[number];
 export const TRANSITION_LABELS: Record<TransitionType, string> = {
   fade: 'Fundido cruzado',
   fadeblack: 'Fundido a negro',
+  dissolve: 'Disolver',
+  smoothleft: 'Barrido suave (izq.)',
+  smoothright: 'Barrido suave (der.)',
+  radial: 'Radial',
+  pixelize: 'Pixelar',
   wipeleft: 'Barrido a la izquierda',
   wiperight: 'Barrido a la derecha',
   wipeup: 'Barrido hacia arriba',

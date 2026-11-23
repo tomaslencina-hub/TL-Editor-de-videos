@@ -12,7 +12,7 @@ export class ExportDialog {
   protected readonly exporter = inject(ExportService);
   protected readonly store = inject(ProjectStore);
 
-  protected readonly percent = computed(() => Math.round(this.exporter.progress().ratio * 100));
+  protected readonly percent = computed(() => Math.round(this.exporter.progress() * 100));
   protected readonly durationCode = computed(() => formatTimecode(this.store.duration(), this.store.settings().fps));
   protected readonly problem = computed(() => {
     // Se recalcula al abrir el diálogo o al cambiar el proyecto.

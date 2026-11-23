@@ -1,9 +1,10 @@
 import { app, dialog, ipcMain, shell, type BrowserWindow } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
-import type { ExportRequest, OpenProjectResult } from '../shared/ipc-contract';
+import type { OpenProjectResult } from '../shared/ipc-contract';
 import { validateProject, type Project } from '../shared/model';
-import { ExportJob } from './ffmpeg/export';
+import { ExportManager } from './ffmpeg/export';
+import { makeIntermediate } from './ffmpeg/intermediate';
 import { probe } from './ffmpeg/probe';
 import { thumbnail } from './ffmpeg/thumbnail';
 import { waveform } from './ffmpeg/waveform';
@@ -13,7 +14,8 @@ const MEDIA_EXTENSIONS = ['mp4', 'm4v', 'mov', 'webm', 'mkv', 'avi', 'ogv', 'mp3
 
 export function registerIpc(getWindow: () => BrowserWindow | null): void {
   const thumbsDir = path.join(app.getPath('userData'), 'cache', 'thumbs');
-  const exportJob = new ExportJob();
+  const decodeDir = path.join(app.getPath('userData'), 'cache', 'decode');
+  const exports = new ExportManager();
 
   ipcMain.handle('media:pick', async () => {
     const win = getWindow();
@@ -36,6 +38,8 @@ export function registerIpc(getWindow: () => BrowserWindow | null): void {
   );
 
   ipcMain.handle('media:waveform', (_e, filePath: string) => waveform(filePath));
+
+  ipcMain.handle('media:intermediate', (_e, filePath: string) => makeIntermediate(decodeDir, filePath));
 
   ipcMain.handle('media:exists', async (_e, filePath: string) => {
     try {
@@ -92,13 +96,14 @@ export function registerIpc(getWindow: () => BrowserWindow | null): void {
     return res.canceled || !res.filePath ? null : res.filePath;
   });
 
-  ipcMain.handle('export:start', (e, req: ExportRequest) =>
-    exportJob.run(req.project, req.outputPath, (p) => {
+  ipcMain.handle('export:begin', (_e, outputPath: string) => exports.begin(outputPath));
+  ipcMain.handle('export:write', (_e, id: string, position: number, data: Uint8Array) => exports.write(id, position, data));
+  ipcMain.handle('export:finish', (e, id: string, project: Project) =>
+    exports.finish(id, project, (p) => {
       if (!e.sender.isDestroyed()) e.sender.send('export:progress', p);
     }),
   );
-
-  ipcMain.handle('export:cancel', () => exportJob.cancel());
+  ipcMain.handle('export:abort', (_e, id: string) => exports.abort(id));
 
   ipcMain.handle('shell:show-item', (_e, filePath: string) => shell.showItemInFolder(filePath));
 }

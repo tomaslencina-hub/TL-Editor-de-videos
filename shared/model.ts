@@ -76,15 +76,56 @@ export interface Clip {
   /** Transición de salida hacia lo que haya debajo. Solo se usa si no hay un clip pegado después. */
   transitionOut?: Transition;
 
+  /** Posición/escala/rotación/opacidad (valores estáticos; los keyframes tienen prioridad). */
+  transform?: Partial<ClipTransform>;
+  /** Ajustes de color. */
+  adjust?: Partial<ColorAdjust>;
+  /**
+   * Keyframes por propiedad animable (ver ANIMATABLE_PROPS en shared/animation.ts).
+   * `time` es relativo al inicio del clip en la timeline.
+   */
+  keyframes?: Partial<Record<AnimatableProp, Keyframe[]>>;
+
   // ---- Futuro (no implementado todavía) ----
   /** Volumen lineal (1 = original). */
   volume?: number;
   /** Velocidad de reproducción (1 = normal). */
   speed?: number;
   effects?: Effect[];
-  /** Keyframes por propiedad animable, p. ej. "opacity", "transform.x", "effects.<id>.amount". */
-  keyframes?: Record<string, Keyframe[]>;
 }
+
+/**
+ * Transformación del clip dentro del cuadro. El clip primero se encaja ("contain") en el cuadro
+ * del proyecto y después se aplica esto.
+ */
+export interface ClipTransform {
+  /** Desplazamiento horizontal en fracción del ancho del cuadro (0 = centrado). */
+  x: number;
+  /** Desplazamiento vertical en fracción del alto del cuadro (0 = centrado, + = abajo). */
+  y: number;
+  /** Escala relativa al encaje (1 = ocupa el cuadro). */
+  scale: number;
+  /** Rotación en grados (horario). */
+  rotation: number;
+  /** 0..1 */
+  opacity: number;
+}
+
+export interface ColorAdjust {
+  /** -1..1 (0 = sin cambio) */
+  brightness: number;
+  /** 0..2 (1 = sin cambio) */
+  contrast: number;
+  /** 0..2 (1 = sin cambio) */
+  saturation: number;
+  /** -1 (frío) .. 1 (cálido) */
+  temperature: number;
+}
+
+export const DEFAULT_TRANSFORM: ClipTransform = { x: 0, y: 0, scale: 1, rotation: 0, opacity: 1 };
+export const DEFAULT_ADJUST: ColorAdjust = { brightness: 0, contrast: 1, saturation: 1, temperature: 0 };
+
+export type AnimatableProp = keyof ClipTransform | keyof ColorAdjust;
 
 /** Futuro: filtros/efectos aplicados al clip. */
 export interface Effect {

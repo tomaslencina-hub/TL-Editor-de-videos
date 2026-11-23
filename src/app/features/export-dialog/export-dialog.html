@@ -19,9 +19,9 @@
           <div class="progress">
             <div class="bar"><div class="fill" [style.width.%]="percent()"></div></div>
             <div class="progress-info">
-              <span>{{ percent() }}%</span>
-              @if (exporter.progress().speed; as speed) {
-                <span class="muted">velocidad {{ speed }}</span>
+              <span>{{ percent() }}% · {{ exporter.phase() === 'video' ? 'Componiendo video' : 'Mezclando audio' }}</span>
+              @if (exporter.phase() === 'video' && exporter.speed(); as speed) {
+                <span class="muted">{{ speed.toFixed(0) }} cuadros/s</span>
               }
             </div>
           </div>

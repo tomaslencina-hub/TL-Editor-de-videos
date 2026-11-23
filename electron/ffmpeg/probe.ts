@@ -10,6 +10,7 @@ interface FfprobeStream {
   r_frame_rate?: string;
   duration?: string;
   disposition?: { attached_pic?: number };
+  side_data_list?: { rotation?: number }[];
 }
 
 interface FfprobeOutput {
@@ -46,6 +47,10 @@ export async function probe(filePath: string): Promise<ProbeResult> {
     throw new Error('No se pudo determinar la duración (¿imagen fija? no soportada en v0.1).');
   }
 
+  // Videos de celular: la rotación va en metadatos; las dimensiones visibles son las rotadas.
+  const rotation = Math.abs(video?.side_data_list?.find((d) => typeof d.rotation === 'number')?.rotation ?? 0);
+  const swap = rotation % 180 === 90;
+
   return {
     path: filePath,
     name: path.basename(filePath),
@@ -53,8 +58,8 @@ export async function probe(filePath: string): Promise<ProbeResult> {
     duration,
     hasVideo: !!video,
     hasAudio: !!audio,
-    width: video?.width,
-    height: video?.height,
+    width: swap ? video?.height : video?.width,
+    height: swap ? video?.width : video?.height,
     fps: parseRate(video?.avg_frame_rate) ?? parseRate(video?.r_frame_rate),
   };
 }

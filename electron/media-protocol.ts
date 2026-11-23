@@ -35,7 +35,8 @@ export function registerMediaSchemePrivileges(): void {
   protocol.registerSchemesAsPrivileged([
     {
       scheme: MEDIA_SCHEME,
-      privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true },
+      // corsEnabled: el renderer lee archivos con fetch (Mediabunny) y sube cuadros de <video> a WebGL.
+      privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true },
     },
   ]);
 }
@@ -44,21 +45,29 @@ function toWeb(stream: fs.ReadStream): ReadableStream {
   return Readable.toWeb(stream) as unknown as ReadableStream;
 }
 
+/** Solo la propia app usa este protocolo; los headers CORS permiten fetch y texturas WebGL. */
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Range',
+  'Access-Control-Expose-Headers': 'Content-Range, Content-Length, Accept-Ranges',
+};
+
 export function handleMediaProtocol(): void {
   protocol.handle(MEDIA_SCHEME, async (request) => {
+    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS_HEADERS });
     const url = new URL(request.url);
     const filePath = decodeURIComponent(url.pathname.replace(/^\//, ''));
     const mime = MIME[path.extname(filePath).toLowerCase()];
     // Solo se sirven extensiones multimedia conocidas.
-    if (!mime) return new Response('Tipo no permitido', { status: 403 });
+    if (!mime) return new Response('Tipo no permitido', { status: 403, headers: CORS_HEADERS });
 
     let size: number;
     try {
       const stat = await fs.promises.stat(filePath);
-      if (!stat.isFile()) return new Response('No encontrado', { status: 404 });
+      if (!stat.isFile()) return new Response('No encontrado', { status: 404, headers: CORS_HEADERS });
       size = stat.size;
     } catch {
-      return new Response('No encontrado', { status: 404 });
+      return new Response('No encontrado', { status: 404, headers: CORS_HEADERS });
     }
 
     const range = request.headers.get('range');
@@ -75,11 +84,12 @@ export function handleMediaProtocol(): void {
         end = match[2] ? Math.min(Number(match[2]), size - 1) : size - 1;
       }
       if (start >= size || start > end) {
-        return new Response(null, { status: 416, headers: { 'Content-Range': `bytes */${size}` } });
+        return new Response(null, { status: 416, headers: { ...CORS_HEADERS, 'Content-Range': `bytes */${size}` } });
       }
       return new Response(toWeb(fs.createReadStream(filePath, { start, end })), {
         status: 206,
         headers: {
+          ...CORS_HEADERS,
           'Content-Type': mime,
           'Content-Length': String(end - start + 1),
           'Content-Range': `bytes ${start}-${end}/${size}`,
@@ -90,7 +100,7 @@ export function handleMediaProtocol(): void {
 
     return new Response(toWeb(fs.createReadStream(filePath)), {
       status: 200,
-      headers: { 'Content-Type': mime, 'Content-Length': String(size), 'Accept-Ranges': 'bytes' },
+      headers: { ...CORS_HEADERS, 'Content-Type': mime, 'Content-Length': String(size), 'Accept-Ranges': 'bytes' },
     });
   });
 }

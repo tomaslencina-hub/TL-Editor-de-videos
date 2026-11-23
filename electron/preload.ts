@@ -26,9 +26,13 @@ const api: TlApi = {
   saveProject: (project, path) => invoke('project:save', project, path),
   openProject: () => invoke('project:open'),
 
+  makeIntermediate: (path) => invoke('media:intermediate', path),
+
   pickExportPath: (name) => invoke('export:pick-path', name),
-  startExport: (req) => invoke('export:start', req),
-  cancelExport: () => invoke('export:cancel'),
+  beginExport: (outputPath) => invoke('export:begin', outputPath),
+  writeExportChunk: (jobId, position, data) => invoke('export:write', jobId, position, data),
+  finishExport: (jobId, project) => invoke('export:finish', jobId, project),
+  abortExport: (jobId) => invoke('export:abort', jobId),
   onExportProgress: (cb) => subscribe<ExportProgress>('export:progress', cb),
 
   onMenuAction: (cb) => subscribe<MenuAction>('menu:action', cb),

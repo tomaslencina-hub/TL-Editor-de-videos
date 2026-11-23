@@ -23,17 +23,13 @@ export interface WaveformData {
   peaksPerSecond: number;
 }
 
-export interface ExportRequest {
-  project: Project;
-  outputPath: string;
-}
-
 export interface ExportProgress {
-  /** 0..1 */
+  /** 0..1 dentro de la fase. */
   ratio: number;
-  /** Segundos ya codificados. */
+  /** Segundos ya procesados. */
   time: number;
-  speed?: string;
+  /** 'video' = composición + codificación en el renderer; 'audio' = mezcla y multiplexado con FFmpeg. */
+  phase: 'video' | 'audio';
 }
 
 export type ExportResult =
@@ -72,9 +68,17 @@ export interface TlApi {
   saveProject(project: Project, path: string | null): Promise<string | null>;
   openProject(): Promise<OpenProjectResult | null>;
 
+  /** Genera (o reutiliza) una copia H.264 para videos que el renderer no puede decodificar. */
+  makeIntermediate(path: string): Promise<string>;
+
   pickExportPath(suggestedName: string): Promise<string | null>;
-  startExport(req: ExportRequest): Promise<ExportResult>;
-  cancelExport(): Promise<void>;
+  /** Abre un trabajo de exportación; el renderer escribe el video codificado con `writeExportChunk`. */
+  beginExport(outputPath: string): Promise<string>;
+  writeExportChunk(jobId: string, position: number, data: Uint8Array): Promise<void>;
+  /** Mezcla el audio del proyecto y lo multiplexa con el video escrito. */
+  finishExport(jobId: string, project: Project): Promise<ExportResult>;
+  /** Cancela en cualquier fase y borra archivos parciales. */
+  abortExport(jobId: string): Promise<void>;
   onExportProgress(cb: (p: ExportProgress) => void): () => void;
 
   onMenuAction(cb: (action: MenuAction) => void): () => void;
@@ -88,11 +92,14 @@ export type IpcChannel =
   | 'media:thumbnail'
   | 'media:waveform'
   | 'media:exists'
+  | 'media:intermediate'
   | 'project:save'
   | 'project:open'
   | 'export:pick-path'
-  | 'export:start'
-  | 'export:cancel'
+  | 'export:begin'
+  | 'export:write'
+  | 'export:finish'
+  | 'export:abort'
   | 'export:progress'
   | 'menu:action'
   | 'shell:show-item';
