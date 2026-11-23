@@ -30,24 +30,17 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
-      - name: Calcular versión y canal
+      - name: Calcular versión
         shell: bash
         run: |
           BASE=$(node -p "require('./package.json').version.split('.').slice(0, 2).join('.')")
           VERSION="$BASE.${{ github.run_number }}"
-          RELEASE_TYPE=release
           if [ "${{ github.ref_name }}" = "test" ]; then
             VERSION="$VERSION-beta"
-            RELEASE_TYPE=prerelease
           fi
           npm version --no-git-tag-version "$VERSION"
-          node -e "
-            const fs = require('fs');
-            const p = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-            p.build.publish[0].releaseType = '$RELEASE_TYPE';
-            fs.writeFileSync('package.json', JSON.stringify(p, null, 2));
-          "
-          echo "Versión: $VERSION ($RELEASE_TYPE)"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "Versión: $VERSION"
 
       - name: Descargar FFmpeg (se incluye en el instalador)
         shell: pwsh
@@ -67,7 +60,9 @@ jobs:
       - name: Compilar
         run: npm run build
 
-      - name: Empaquetar y publicar
+      # electron-builder sube todo a una release en BORRADOR (GitHub no deja agregar archivos a una
+      # release que se crea ya publicada con un tag nuevo); el paso siguiente la publica.
+      - name: Empaquetar y subir (borrador)
         shell: bash
         run: |
           set -o pipefail
@@ -78,3 +73,28 @@ jobs:
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publicar la release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ github.ref_name }}" = "test" ]; then
+            gh release edit "v$VERSION" --draft=false --prerelease --target "$GITHUB_SHA"
+          else
+            gh release edit "v$VERSION" --draft=false --latest --target "$GITHUB_SHA"
+          fi
+          gh release view "v$VERSION" --json tagName,isPrerelease,assets --jq '{tag: .tagName, prerelease: .isPrerelease, assets: [.assets[].name]}'
+
+      # Releases publicadas sin instalador (p. ej. intentos fallidos) confunden al actualizador: se borran.
+      - name: Limpiar releases incompletas
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api "repos/${{ github.repository }}/releases?per_page=100" \
+            --jq '.[] | select(.draft == false) | select([.assets[].name | endswith(".exe")] | any | not) | .tag_name' |
+          while read -r tag; do
+            echo "Borrando release incompleta $tag"
+            gh release delete "$tag" --yes --cleanup-tag
+          done
