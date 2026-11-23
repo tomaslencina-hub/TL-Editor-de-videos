@@ -37,6 +37,17 @@ export type ExportResult =
   | { status: 'cancelled' }
   | { status: 'error'; message: string };
 
+/** Estado de la actualización automática. */
+export interface UpdateStatus {
+  state: 'idle' | 'disabled' | 'checking' | 'up-to-date' | 'downloading' | 'ready' | 'error';
+  currentVersion: string;
+  /** Versión nueva (si hay). */
+  version?: string;
+  /** 0..100 durante la descarga. */
+  percent?: number;
+  message?: string;
+}
+
 export interface OpenProjectResult {
   path: string;
   project: Project;
@@ -82,6 +93,12 @@ export interface TlApi {
   onExportProgress(cb: (p: ExportProgress) => void): () => void;
 
   onMenuAction(cb: (action: MenuAction) => void): () => void;
+
+  getUpdateStatus(): Promise<UpdateStatus>;
+  onUpdateStatus(cb: (status: UpdateStatus) => void): () => void;
+  /** Cierra la app, instala la versión descargada y la vuelve a abrir. */
+  installUpdate(): Promise<void>;
+  checkForUpdates(): Promise<void>;
   showItemInFolder(path: string): Promise<void>;
 }
 
@@ -102,4 +119,8 @@ export type IpcChannel =
   | 'export:abort'
   | 'export:progress'
   | 'menu:action'
-  | 'shell:show-item';
+  | 'shell:show-item'
+  | 'update:status'
+  | 'update:get-status'
+  | 'update:install'
+  | 'update:check';

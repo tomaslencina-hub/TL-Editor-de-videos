@@ -1,0 +1,73 @@
+# Publica un instalador de Windows en GitHub Releases al subir a `test` o `production`.
+# La app instalada se actualiza sola desde esas releases (electron-updater):
+#   - production → versión estable  X.Y.N       → la reciben todos los usuarios
+#   - test       → versión beta     X.Y.N-beta  → la reciben solo quienes tienen instalada una beta
+# N es el número de ejecución de este workflow: siempre crece, así cada publicación es más nueva que la anterior.
+name: Release
+
+on:
+  push:
+    branches: [test, production]
+
+permissions:
+  contents: write # crear releases y subir el instalador
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Calcular versión y canal
+        shell: bash
+        run: |
+          BASE=$(node -p "require('./package.json').version.split('.').slice(0, 2).join('.')")
+          VERSION="$BASE.${{ github.run_number }}"
+          RELEASE_TYPE=release
+          if [ "${{ github.ref_name }}" = "test" ]; then
+            VERSION="$VERSION-beta"
+            RELEASE_TYPE=prerelease
+          fi
+          npm version --no-git-tag-version "$VERSION"
+          node -e "
+            const fs = require('fs');
+            const p = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            p.build.publish[0].releaseType = '$RELEASE_TYPE';
+            fs.writeFileSync('package.json', JSON.stringify(p, null, 2));
+          "
+          echo "Versión: $VERSION ($RELEASE_TYPE)"
+
+      - name: Descargar FFmpeg (se incluye en el instalador)
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip -OutFile ffmpeg.zip
+          Expand-Archive ffmpeg.zip -DestinationPath ffmpeg-tmp
+          $bin = Get-ChildItem ffmpeg-tmp -Recurse -Filter ffmpeg.exe | Select-Object -First 1
+          $root = $bin.Directory.Parent.FullName
+          New-Item -ItemType Directory -Force vendor/ffmpeg | Out-Null
+          Copy-Item "$($bin.Directory.FullName)/ffmpeg.exe", "$($bin.Directory.FullName)/ffprobe.exe" vendor/ffmpeg/
+          Copy-Item "$root/LICENSE" vendor/ffmpeg/LICENSE-ffmpeg.txt -ErrorAction SilentlyContinue
+          & vendor/ffmpeg/ffmpeg.exe -hide_banner -version | Select-Object -First 1
+
+      - name: Chequeo de tipos
+        run: npm run typecheck
+
+      - name: Compilar
+        run: npm run build
+
+      - name: Empaquetar y publicar
+        run: npx electron-builder --win --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -7,32 +7,93 @@
     "build": "ng build --base-href ./ && tsc -p tsconfig.electron.json",
     "start:prod": "npm run build && node scripts/run-electron.cjs",
     "typecheck": "tsc -p tsconfig.electron.json --noEmit && tsc -p tsconfig.app.json --noEmit",
-    "ng": "ng"
+    "ng": "ng",
+    "dist": "npm run build && electron-builder --win --publish never"
   },
   "private": true,
   "packageManager": "npm@11.13.0",
   "dependencies": {
-    "@angular/common": "^22.3.0",
-    "@angular/compiler": "^22.3.0",
-    "@angular/core": "^22.3.0",
-    "@angular/forms": "^22.3.0",
-    "@angular/platform-browser": "^22.3.0",
-    "mediabunny": "^1.66.2",
-    "rxjs": "~7.8.0",
-    "tslib": "^2.3.0"
+    "electron-updater": "^6.8.11"
   },
   "devDependencies": {
     "@angular/build": "^22.3.0",
     "@angular/cli": "^22.3.0",
+    "@angular/common": "^22.3.0",
+    "@angular/compiler": "^22.3.0",
     "@angular/compiler-cli": "^22.3.0",
+    "@angular/core": "^22.3.0",
+    "@angular/forms": "^22.3.0",
+    "@angular/platform-browser": "^22.3.0",
     "@types/node": "^26.6.6",
     "concurrently": "^10.0.7",
     "electron": "^45.4.1",
+    "electron-builder": "^26.18.0",
+    "mediabunny": "^1.66.2",
     "prettier": "^3.8.1",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0",
     "typescript": "~6.0.2",
     "wait-on": "^9.5.1"
   },
   "description": "SHOTON — editor de video de escritorio (Electron + Angular + FFmpeg)",
   "main": "dist-electron/electron/main.js",
-  "productName": "SHOTON"
+  "productName": "SHOTON",
+  "author": "Tomas Lencina",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tomaslencina-hub/TL-Editor-de-videos.git"
+  },
+  "build": {
+    "appId": "com.shoton.editor",
+    "productName": "SHOTON",
+    "copyright": "Copyright © 2026 Tomas Lencina",
+    "directories": {
+      "output": "release",
+      "buildResources": "resources"
+    },
+    "files": [
+      "dist/tl-editor/browser/**/*",
+      "dist-electron/**/*.js",
+      "resources/icon.ico",
+      "resources/icon.png",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "vendor/ffmpeg",
+        "to": "ffmpeg",
+        "filter": [
+          "ffmpeg.exe",
+          "ffprobe.exe",
+          "LICENSE*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "resources/icon.ico",
+      "artifactName": "SHOTON-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": false,
+      "shortcutName": "SHOTON"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "tomaslencina-hub",
+        "repo": "TL-Editor-de-videos",
+        "releaseType": "release"
+      }
+    ]
+  }
 }

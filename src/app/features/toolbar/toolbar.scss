@@ -37,3 +37,14 @@
   gap: 6px;
   color: var(--text-1);
 }
+
+.update {
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.update-ready {
+  background: linear-gradient(90deg, #2f6fb3, #b23ad6);
+  border-color: transparent;
+  font-size: 12px;
+}

@@ -1,4 +1,10 @@
-<img class="brand" src="logo.png" alt="SHOTON — Video Editor" draggable="false" />
+<img
+  class="brand"
+  src="logo.png"
+  alt="SHOTON — Video Editor"
+  draggable="false"
+  [title]="'SHOTON ' + (updates.status().currentVersion || '')"
+/>
 
 <div class="group">
   <button class="icon" title="Nuevo proyecto (Ctrl+N)" (click)="actions.newProject()">🗋</button>
@@ -38,6 +44,19 @@
 }
 
 <div class="spacer"></div>
+
+@switch (updates.status().state) {
+  @case ('downloading') {
+    <span class="update muted" [title]="'Descargando SHOTON ' + updates.status().version">
+      ⤓ Actualización {{ updates.status().percent ?? 0 }}%
+    </span>
+  }
+  @case ('ready') {
+    <button class="update-ready" (click)="updates.install()" [title]="'Instalar SHOTON ' + updates.status().version + ' y reiniciar'">
+      ⟳ Reiniciar y actualizar a {{ updates.status().version }}
+    </button>
+  }
+}
 
 <label class="setting">
   Resolución

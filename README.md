@@ -19,6 +19,26 @@ Editor de video de escritorio estilo Filmora: **Electron + Angular 22 (standalon
 
 > Los cambios en `electron/` requieren reiniciar `npm start` (el renderer sí se recarga solo).
 
+## Ramas, versiones y actualización automática
+
+| Rama | Qué pasa al hacer push | Quién lo recibe |
+|---|---|---|
+| `dev` | CI: chequeo de tipos + build (no publica) | nadie: desarrollo diario |
+| `test` | Se publica una **beta** `0.1.N-beta` en GitHub Releases (prerelease) | quienes tengan instalada una beta |
+| `production` | Se publica la **versión estable** `0.1.N` | todos los usuarios |
+
+Flujo: trabajar en `dev` → `git checkout test && git merge dev && git push` → probar la beta →
+`git checkout production && git merge test && git push`.
+
+- La app instalada busca actualizaciones al abrir y cada 4 h (`electron/updater.ts`), descarga en segundo plano
+  y la instala al cerrarse (o al tocar *Reiniciar y actualizar* en la barra superior).
+- El canal sale de la versión instalada: una estable solo recibe estables; una beta recibe betas y estables más nuevas.
+- `N` es el número de ejecución del workflow (`.github/workflows/release.yml`), así cada publicación es más nueva.
+- Para cambiar la versión mayor/menor, editar `version` en `package.json` (p. ej. `0.2.0` → las siguientes serán `0.2.N`).
+- El instalador incluye FFmpeg (build *essentials* de gyan.dev, licencia GPL): el usuario no necesita instalar nada.
+- `npm run dist` genera el instalador localmente en `release/` (requiere `vendor/ffmpeg/ffmpeg.exe` y `ffprobe.exe`).
+- El instalador no está firmado: Windows SmartScreen muestra un aviso la primera vez ("Más información → Ejecutar de todas formas").
+
 ## Uso rápido
 
 1. **Importar**: *Importar* (Ctrl+I) o arrastrar archivos a la ventana. Los formatos que el motor no decodifica

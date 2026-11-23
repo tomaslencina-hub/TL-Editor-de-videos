@@ -46,3 +46,7 @@ Thumbs.db
 # Electron
 /dist-electron
 *.vproj.tmp
+
+# Empaquetado
+/release
+/vendor

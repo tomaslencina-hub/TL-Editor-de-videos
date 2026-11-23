@@ -1,8 +1,24 @@
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
 
-/** Permite forzar binarios concretos con variables de entorno; si no, usa el PATH. */
-export const FFMPEG_BIN = process.env['FFMPEG_PATH'] || 'ffmpeg';
-export const FFPROBE_BIN = process.env['FFPROBE_PATH'] || 'ffprobe';
+/**
+ * Resolución de binarios: variable de entorno → copia incluida en el instalador
+ * (resources/ffmpeg) → PATH del sistema (desarrollo).
+ */
+function resolveBin(name: 'ffmpeg' | 'ffprobe', envVar: string): string {
+  const fromEnv = process.env[envVar];
+  if (fromEnv) return fromEnv;
+  const resources = (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath;
+  if (resources) {
+    const bundled = path.join(resources, 'ffmpeg', process.platform === 'win32' ? `${name}.exe` : name);
+    if (fs.existsSync(bundled)) return bundled;
+  }
+  return name;
+}
+
+export const FFMPEG_BIN = resolveBin('ffmpeg', 'FFMPEG_PATH');
+export const FFPROBE_BIN = resolveBin('ffprobe', 'FFPROBE_PATH');
 
 /** Verifica que ffmpeg y ffprobe estén disponibles. Devuelve un mensaje de error o null. */
 export function checkFfmpegAvailable(): string | null {

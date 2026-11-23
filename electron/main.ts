@@ -4,6 +4,7 @@ import { checkFfmpegAvailable } from './ffmpeg/process';
 import { registerIpc } from './ipc';
 import { handleMediaProtocol, registerMediaSchemePrivileges } from './media-protocol';
 import { buildMenu } from './menu';
+import { initAutoUpdates } from './updater';
 
 /** En desarrollo se pasa `--dev-url=http://localhost:4200`; en producción se carga el build de Angular. */
 const devUrl = process.argv.find((a) => a.startsWith('--dev-url='))?.slice('--dev-url='.length);
@@ -83,6 +84,7 @@ void app.whenReady().then(() => {
   handleMediaProtocol();
   registerIpc(() => mainWindow);
   Menu.setApplicationMenu(buildMenu(() => mainWindow));
+  initAutoUpdates(() => mainWindow);
   createWindow();
 
   app.on('activate', () => {
