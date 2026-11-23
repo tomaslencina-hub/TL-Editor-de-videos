@@ -1,0 +1,237 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-1);
+}
+
+.tl-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+
+  .sep {
+    width: 1px;
+    height: 20px;
+    background: var(--border);
+    margin: 0 4px;
+  }
+  .spacer {
+    flex: 1;
+  }
+  .zoom {
+    width: 160px;
+  }
+}
+
+.tl-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.headers {
+  width: 150px;
+  flex: none;
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+  background: var(--bg-1);
+  position: relative;
+  z-index: 2;
+}
+
+.ruler-spacer {
+  border-bottom: 1px solid var(--border);
+}
+
+.track-header {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-2);
+
+  .track-name {
+    font-weight: 600;
+    color: var(--text-1);
+  }
+  .track-buttons {
+    display: flex;
+    gap: 4px;
+  }
+  button.small {
+    padding: 1px 6px;
+    min-width: 0;
+    font-size: 12px;
+    background: transparent;
+    border-color: transparent;
+    &.on {
+      background: var(--bg-4);
+    }
+  }
+}
+
+.scroll {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  position: relative;
+  background: var(--bg-0);
+}
+
+.content {
+  position: relative;
+  min-height: 100%;
+}
+
+.ruler-wrap {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  cursor: text;
+  .ruler {
+    position: sticky;
+    left: 0;
+    height: 100%;
+  }
+}
+
+.playhead-handle {
+  position: absolute;
+  top: 0;
+  width: 13px;
+  height: 14px;
+  margin-left: -6px;
+  background: var(--playhead);
+  clip-path: polygon(0 0, 100% 0, 100% 55%, 50% 100%, 0 55%);
+  pointer-events: none;
+}
+
+.track-row {
+  position: relative;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-1);
+  &.video {
+    background: #1a1c22;
+  }
+  &.locked {
+    background-image: repeating-linear-gradient(135deg, transparent 0 8px, rgb(255 255 255 / 3%) 8px 16px);
+  }
+}
+
+.clip {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  border-radius: 5px;
+  overflow: hidden;
+  cursor: grab;
+  border: 1px solid rgb(255 255 255 / 15%);
+  background-repeat: repeat-x;
+  background-size: auto 100%;
+  background-position: left center;
+
+  &.video {
+    background-color: var(--video-clip);
+  }
+  &.audio {
+    background-color: var(--audio-clip);
+  }
+  &.selected {
+    border: 2px solid var(--snap);
+    &.video {
+      background-color: var(--video-clip-sel);
+    }
+    &.audio {
+      background-color: var(--audio-clip-sel);
+    }
+  }
+  &.dragging {
+    opacity: 0.85;
+    z-index: 3;
+    cursor: grabbing;
+    box-shadow: 0 4px 14px rgb(0 0 0 / 50%);
+  }
+  &.missing {
+    background-image: repeating-linear-gradient(135deg, rgb(229 83 75 / 50%) 0 6px, transparent 6px 12px) !important;
+  }
+  &.muted .wave {
+    opacity: 0.3;
+  }
+
+  .clip-label {
+    position: absolute;
+    top: 2px;
+    left: 8px;
+    right: 8px;
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-shadow: 0 1px 2px rgb(0 0 0 / 90%);
+    pointer-events: none;
+  }
+
+  .wave {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 2px;
+    top: 16px;
+    &.half {
+      top: auto;
+      height: 26px;
+      background: rgb(0 0 0 / 35%);
+    }
+  }
+
+  .handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 8px;
+    cursor: ew-resize;
+    z-index: 1;
+    &.start {
+      left: 0;
+    }
+    &.end {
+      right: 0;
+    }
+    &:hover {
+      background: rgb(255 255 255 / 25%);
+    }
+  }
+}
+
+.drop-ghost {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  border: 2px dashed var(--accent);
+  background: rgb(25 195 176 / 15%);
+  border-radius: 5px;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.playhead,
+.snap-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.playhead {
+  border-left: 1px solid var(--playhead);
+}
+
+.snap-line {
+  border-left: 1px dashed var(--snap);
+}

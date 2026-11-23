@@ -1,0 +1,109 @@
+:root {
+  --bg-0: #121317;
+  --bg-1: #18191e;
+  --bg-2: #1f2127;
+  --bg-3: #2a2d35;
+  --bg-4: #353944;
+  --border: #2e3139;
+  --text-0: #e9eaee;
+  --text-1: #b4b7c0;
+  --text-2: #7d818c;
+  --accent: #19c3b0;
+  --accent-2: #13a090;
+  --danger: #e5534b;
+  --success: #3fb950;
+  --video-clip: #2f6fb3;
+  --video-clip-sel: #4a8ed6;
+  --audio-clip: #2b8a5a;
+  --audio-clip-sel: #3dae76;
+  --playhead: #ff4d5a;
+  --snap: #ffd84d;
+  --radius: 6px;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-0);
+  color: var(--text-0);
+  font: 13px/1.4 'Segoe UI', system-ui, sans-serif;
+  user-select: none;
+}
+
+button {
+  font: inherit;
+  color: var(--text-0);
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 5px 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+
+  &:hover:not(:disabled) {
+    background: var(--bg-4);
+  }
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+  &.primary {
+    background: var(--accent-2);
+    border-color: var(--accent-2);
+    &:hover:not(:disabled) {
+      background: var(--accent);
+    }
+  }
+  &.icon {
+    padding: 5px 8px;
+    min-width: 30px;
+    justify-content: center;
+  }
+  &.active {
+    background: var(--accent-2);
+    border-color: var(--accent-2);
+  }
+}
+
+select,
+input[type='text'] {
+  font: inherit;
+  color: var(--text-0);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px 8px;
+  user-select: text;
+}
+
+input[type='range'] {
+  accent-color: var(--accent);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-1);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--bg-4);
+  border-radius: 5px;
+  border: 2px solid var(--bg-1);
+}
+
+.mono {
+  font-family: 'Cascadia Mono', Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}

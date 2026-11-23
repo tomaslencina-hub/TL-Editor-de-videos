@@ -1,0 +1,46 @@
+<header>
+  <span class="title">Medios</span>
+  <button (click)="actions.importDialog()" title="Importar medios (Ctrl+I)">＋ Importar</button>
+</header>
+
+<div class="list">
+  @for (m of store.project().media; track m.id) {
+    @let assets = library.assets().get(m.id);
+    <div
+      class="item"
+      [class.missing]="assets?.missing"
+      draggable="true"
+      (dragstart)="onDragStart($event, m)"
+      (dragend)="onDragEnd()"
+      [title]="m.path"
+    >
+      <div class="thumb">
+        @if (assets?.thumbnail; as src) {
+          <img [src]="src" alt="" draggable="false" />
+        } @else if (!m.hasVideo) {
+          <span class="audio-icon">♪</span>
+        }
+        <span class="duration mono">{{ formatDuration(m.duration) }}</span>
+      </div>
+      <div class="info">
+        <div class="name">{{ m.name }}</div>
+        <div class="meta">
+          @if (assets?.missing) {
+            <span class="warn">Archivo no encontrado</span>
+          } @else {
+            {{ details(m) }}
+          }
+        </div>
+      </div>
+      <button class="icon remove" title="Quitar del proyecto" (click)="remove(m, $event)">✕</button>
+    </div>
+  } @empty {
+    <div class="empty" (click)="actions.importDialog()">
+      <div class="big">⇪</div>
+      Arrastrá videos o audios acá<br />o hacé clic para importar
+    </div>
+  }
+  @if (library.importing() > 0) {
+    <div class="importing">Analizando {{ library.importing() }} archivo(s)…</div>
+  }
+</div>

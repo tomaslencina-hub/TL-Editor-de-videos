@@ -1,0 +1,59 @@
+<div class="brand">TL<span>Editor</span></div>
+
+<div class="group">
+  <button class="icon" title="Nuevo proyecto (Ctrl+N)" (click)="actions.newProject()">🗋</button>
+  <button class="icon" title="Abrir proyecto (Ctrl+O)" (click)="actions.openProject()">📂</button>
+  <button class="icon" title="Guardar (Ctrl+S)" (click)="actions.save(false)">💾</button>
+</div>
+
+<div class="group">
+  <button
+    class="icon"
+    [disabled]="!store.canUndo()"
+    [title]="'Deshacer' + (store.undoLabel() ? ': ' + store.undoLabel() : '') + ' (Ctrl+Z)'"
+    (click)="store.undo()"
+  >
+    ↶
+  </button>
+  <button
+    class="icon"
+    [disabled]="!store.canRedo()"
+    [title]="'Rehacer' + (store.redoLabel() ? ': ' + store.redoLabel() : '') + ' (Ctrl+Y)'"
+    (click)="store.redo()"
+  >
+    ↷
+  </button>
+</div>
+
+<input
+  class="name"
+  type="text"
+  [value]="store.project().name"
+  (change)="rename($any($event.target).value)"
+  (keydown.enter)="$any($event.target).blur()"
+  title="Nombre del proyecto"
+/>
+@if (store.dirty()) {
+  <span class="dirty" title="Cambios sin guardar">●</span>
+}
+
+<div class="spacer"></div>
+
+<label class="setting">
+  Resolución
+  <select [value]="resolutionKey()" (change)="setResolution($any($event.target).value)">
+    @for (r of resolutions(); track r.key) {
+      <option [value]="r.key" [selected]="r.key === resolutionKey()">{{ r.label }}</option>
+    }
+  </select>
+</label>
+<label class="setting">
+  FPS
+  <select (change)="setFps($any($event.target).value)">
+    @for (f of fpsList(); track f) {
+      <option [value]="f" [selected]="f === store.settings().fps">{{ f }}</option>
+    }
+  </select>
+</label>
+
+<button class="primary" (click)="exporter.show()" title="Exportar (Ctrl+E)">Exportar</button>

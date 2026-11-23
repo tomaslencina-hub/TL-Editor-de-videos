@@ -1,0 +1,84 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 60%);
+  display: grid;
+  place-items: center;
+  z-index: 150;
+}
+
+.dialog {
+  width: 460px;
+  max-width: calc(100vw - 32px);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px 22px;
+  box-shadow: 0 20px 60px rgb(0 0 0 / 50%);
+
+  h2 {
+    margin: 0 0 14px;
+    font-size: 17px;
+  }
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 16px;
+  margin: 0 0 16px;
+  dt {
+    color: var(--text-2);
+  }
+  dd {
+    margin: 0;
+  }
+}
+
+.progress {
+  .bar {
+    height: 10px;
+    border-radius: 5px;
+    background: var(--bg-0);
+    overflow: hidden;
+  }
+  .fill {
+    height: 100%;
+    background: var(--accent);
+    transition: width 0.2s linear;
+  }
+  .progress-info {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+  }
+}
+
+.muted {
+  color: var(--text-2);
+}
+.ok {
+  color: var(--success);
+  margin-bottom: 4px;
+}
+.path {
+  color: var(--text-1);
+  word-break: break-all;
+  margin-top: 0;
+  user-select: text;
+}
+.error {
+  color: var(--danger);
+  white-space: pre-wrap;
+  font: inherit;
+  max-height: 200px;
+  overflow: auto;
+  user-select: text;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}

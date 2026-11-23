@@ -1,0 +1,63 @@
+@if (exporter.open()) {
+  <div class="backdrop" (click)="exporter.close()">
+    <div class="dialog" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+      <h2>Exportar video</h2>
+
+      <dl class="summary">
+        <dt>Formato</dt>
+        <dd>MP4 (H.264 + AAC)</dd>
+        <dt>Resolución</dt>
+        <dd>{{ store.settings().width }}×{{ store.settings().height }}</dd>
+        <dt>FPS</dt>
+        <dd>{{ store.settings().fps }}</dd>
+        <dt>Duración</dt>
+        <dd class="mono">{{ durationCode() }}</dd>
+      </dl>
+
+      @switch (exporter.status()) {
+        @case ('running') {
+          <div class="progress">
+            <div class="bar"><div class="fill" [style.width.%]="percent()"></div></div>
+            <div class="progress-info">
+              <span>{{ percent() }}%</span>
+              @if (exporter.progress().speed; as speed) {
+                <span class="muted">velocidad {{ speed }}</span>
+              }
+            </div>
+          </div>
+        }
+        @case ('done') {
+          <p class="ok">✔ Exportación terminada.</p>
+          <p class="path">{{ exporter.outputPath() }}</p>
+        }
+        @case ('cancelled') {
+          <p class="muted">Exportación cancelada.</p>
+        }
+        @case ('error') {
+          <pre class="error">{{ exporter.message() }}</pre>
+        }
+        @default {
+          @if (problem(); as p) {
+            <p class="error">{{ p }}</p>
+          }
+        }
+      }
+
+      <div class="actions">
+        @switch (exporter.status()) {
+          @case ('running') {
+            <button (click)="exporter.cancel()">Cancelar</button>
+          }
+          @case ('done') {
+            <button (click)="exporter.reveal()">Mostrar en carpeta</button>
+            <button class="primary" (click)="exporter.close()">Cerrar</button>
+          }
+          @default {
+            <button (click)="exporter.close()">Cerrar</button>
+            <button class="primary" [disabled]="!!problem()" (click)="exporter.start()">Elegir destino y exportar…</button>
+          }
+        }
+      </div>
+    </div>
+  </div>
+}

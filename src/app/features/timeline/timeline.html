@@ -1,0 +1,143 @@
+<div class="tl-toolbar">
+  <button title="Dividir en el playhead (S / Ctrl+B)" (click)="actions.splitAtPlayhead()">✂ Dividir</button>
+  <button title="Borrar clip seleccionado (Supr)" [disabled]="!hasSelection()" (click)="actions.deleteSelected()">
+    🗑 Borrar
+  </button>
+  <div class="sep"></div>
+  <button
+    class="icon"
+    [class.active]="view.snapEnabled()"
+    (click)="view.snapEnabled.set(!view.snapEnabled())"
+    title="Imantado a bordes y playhead (mantené Alt para desactivarlo temporalmente)"
+  >
+    🧲
+  </button>
+  <div class="spacer"></div>
+  <button class="icon" title="Alejar (-)" (click)="zoomAround(0.8)">－</button>
+  <input
+    type="range"
+    class="zoom"
+    [min]="MIN_PPS"
+    [max]="MAX_PPS"
+    step="1"
+    [value]="view.pps()"
+    (input)="setZoom(+$any($event.target).value)"
+    title="Zoom (Ctrl + rueda)"
+  />
+  <button class="icon" title="Acercar (+)" (click)="zoomAround(1.25)">＋</button>
+  <button title="Ajustar a la ventana" (click)="zoomToFit()">Ajustar</button>
+</div>
+
+<div class="tl-body">
+  <div class="headers">
+    <div class="ruler-spacer" [style.height.px]="RULER_HEIGHT"></div>
+    <div class="headers-inner" [style.transform]="'translateY(' + -scrollTop() + 'px)'">
+      @for (row of rows(); track row.track.id) {
+        <div class="track-header" [class]="row.track.kind" [style.height.px]="TRACK_HEIGHT[row.track.kind]">
+          <span class="track-name">{{ row.track.kind === 'video' ? '🎞' : '♪' }} {{ row.track.name }}</span>
+          <div class="track-buttons">
+            <button
+              class="icon small"
+              [class.on]="row.track.muted"
+              (click)="toggleMute(row.track)"
+              [title]="row.track.muted ? 'Activar sonido' : 'Silenciar pista'"
+            >
+              {{ row.track.muted ? '🔇' : '🔊' }}
+            </button>
+            <button
+              class="icon small"
+              [class.on]="row.track.locked"
+              (click)="toggleLock(row.track)"
+              [title]="row.track.locked ? 'Desbloquear pista' : 'Bloquear pista'"
+            >
+              {{ row.track.locked ? '🔒' : '🔓' }}
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+
+  <div
+    class="scroll"
+    #scroll
+    (scroll)="onScroll()"
+    (wheel)="onWheel($event)"
+    (pointermove)="onPointerMove($event)"
+    (pointerup)="onPointerUp($event)"
+    (pointercancel)="onPointerUp($event)"
+  >
+    <div class="content" [style.width.px]="contentWidth()">
+      <div class="ruler-wrap" [style.height.px]="RULER_HEIGHT" (pointerdown)="onRulerPointerDown($event)">
+        <app-timeline-ruler
+          class="ruler"
+          [style.width.px]="viewportWidth()"
+          [pps]="view.pps()"
+          [scrollLeft]="scrollLeft()"
+          [width]="viewportWidth()"
+          [height]="RULER_HEIGHT"
+        />
+        <div class="playhead-handle" [style.left.px]="playheadX()"></div>
+      </div>
+
+      @for (row of rows(); track row.track.id) {
+        <div
+          class="track-row"
+          [class]="row.track.kind"
+          [class.locked]="row.track.locked"
+          [attr.data-track-id]="row.track.id"
+          [style.height.px]="TRACK_HEIGHT[row.track.kind]"
+          (pointerdown)="onTrackPointerDown($event)"
+          (dragover)="onTrackDragOver($event, row.track)"
+          (dragleave)="onTrackDragLeave($event)"
+          (drop)="onTrackDrop($event, row.track)"
+        >
+          @for (clip of row.clips; track clip.id) {
+            @let media = mediaById().get(clip.sourceId);
+            @let assets = library.assets().get(clip.sourceId);
+            @let width = clipStyleWidth(clip);
+            <div
+              class="clip"
+              [class]="row.track.kind"
+              [class.selected]="store.selectedClipId() === clip.id"
+              [class.dragging]="preview()?.clipId === clip.id"
+              [class.missing]="assets?.missing"
+              [class.muted]="row.track.muted"
+              [style.left.px]="clip.start * view.pps()"
+              [style.width.px]="width"
+              [style.background-image]="row.track.kind === 'video' && assets?.thumbnail ? 'url(&quot;' + assets!.thumbnail + '&quot;)' : null"
+              [title]="clipName(clip)"
+              (pointerdown)="onClipPointerDown($event, clip, row.track, 'move')"
+            >
+              @if (assets?.waveform && media?.hasAudio) {
+                <app-waveform
+                  class="wave"
+                  [class.half]="row.track.kind === 'video'"
+                  [data]="assets!.waveform!"
+                  [inPoint]="clip.inPoint"
+                  [outPoint]="clip.outPoint"
+                  [width]="width"
+                  [height]="row.track.kind === 'video' ? 26 : TRACK_HEIGHT.audio - 18"
+                />
+              }
+              <span class="clip-label">{{ clipName(clip) }}</span>
+              <div class="handle start" (pointerdown)="onClipPointerDown($event, clip, row.track, 'start')"></div>
+              <div class="handle end" (pointerdown)="onClipPointerDown($event, clip, row.track, 'end')"></div>
+            </div>
+          }
+
+          @if (dropGhost(); as g) {
+            @if (g.trackId === row.track.id) {
+              <div class="drop-ghost" [style.left.px]="g.start * view.pps()" [style.width.px]="g.duration * view.pps()"></div>
+            }
+          }
+        </div>
+      }
+
+      @if (snapLine() !== null) {
+        <div class="snap-line" [style.left.px]="snapLine()! * view.pps()"></div>
+      }
+      <div class="playhead" [style.left.px]="playheadX()"></div>
+    </div>
+  </div>
+</div>

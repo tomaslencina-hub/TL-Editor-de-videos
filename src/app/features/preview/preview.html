@@ -1,0 +1,29 @@
+<div class="stage" #stage>
+  <div
+    class="frame"
+    [style.width.px]="frameSize().w"
+    [style.height.px]="frameSize().h"
+    [style.background]="store.settings().backgroundColor"
+  >
+    <video #video playsinline disablepictureinpicture></video>
+  </div>
+  <audio #audio></audio>
+</div>
+
+<div class="transport">
+  <span class="time mono">{{ timecode() }}</span>
+  <div class="buttons">
+    <button class="icon" title="Ir al inicio (Inicio)" (click)="playback.seek(0)">⏮</button>
+    <button class="icon" title="Frame anterior (←)" (click)="playback.step(-1)">◀︎</button>
+    <button
+      class="icon play"
+      [title]="playback.playing() ? 'Pausa (Espacio)' : 'Reproducir (Espacio)'"
+      (click)="playback.toggle()"
+    >
+      {{ playback.playing() ? '❚❚' : '▶' }}
+    </button>
+    <button class="icon" title="Frame siguiente (→)" (click)="playback.step(1)">▶︎</button>
+    <button class="icon" title="Ir al final (Fin)" (click)="playback.seek(store.duration())">⏭</button>
+  </div>
+  <span class="time mono total">{{ durationCode() }}</span>
+</div>

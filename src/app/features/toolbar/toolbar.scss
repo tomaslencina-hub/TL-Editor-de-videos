@@ -1,0 +1,44 @@
+:host {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--bg-1);
+}
+
+.brand {
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.5px;
+  color: var(--accent);
+  span {
+    color: var(--text-0);
+    font-weight: 400;
+    margin-left: 2px;
+  }
+}
+
+.group {
+  display: flex;
+  gap: 4px;
+}
+
+.name {
+  width: 220px;
+}
+
+.dirty {
+  color: var(--snap);
+  margin-left: -6px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.setting {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-1);
+}

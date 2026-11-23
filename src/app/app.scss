@@ -1,0 +1,48 @@
+:host {
+  display: grid;
+  height: 100vh;
+  grid-template-columns: minmax(260px, 30%) 1fr;
+  grid-template-rows: auto minmax(220px, 1fr) minmax(240px, 42%);
+  grid-template-areas:
+    'toolbar toolbar'
+    'media preview'
+    'timeline timeline';
+  gap: 1px;
+  background: var(--border);
+}
+
+.toolbar {
+  grid-area: toolbar;
+}
+.media {
+  grid-area: media;
+  min-height: 0;
+}
+.preview {
+  grid-area: preview;
+  min-height: 0;
+  min-width: 0;
+}
+.timeline {
+  grid-area: timeline;
+  min-height: 0;
+  min-width: 0;
+}
+
+.drop-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 55%);
+  display: grid;
+  place-items: center;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.drop-box {
+  border: 2px dashed var(--accent);
+  border-radius: 12px;
+  padding: 40px 60px;
+  font-size: 18px;
+  background: rgb(25 195 176 / 10%);
+}

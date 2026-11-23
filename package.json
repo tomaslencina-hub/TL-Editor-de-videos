@@ -1,0 +1,36 @@
+{
+  "name": "tl-editor",
+  "version": "0.1.0",
+  "scripts": {
+    "start": "concurrently -k -n ng,electron -c blue,green \"ng serve --port 4200\" \"npm:electron:dev\"",
+    "electron:dev": "tsc -p tsconfig.electron.json && wait-on -t 180000 http-get://localhost:4200 && node scripts/run-electron.cjs --dev-url=http://localhost:4200",
+    "build": "ng build --base-href ./ && tsc -p tsconfig.electron.json",
+    "start:prod": "npm run build && node scripts/run-electron.cjs",
+    "typecheck": "tsc -p tsconfig.electron.json --noEmit && tsc -p tsconfig.app.json --noEmit",
+    "ng": "ng"
+  },
+  "private": true,
+  "packageManager": "npm@11.13.0",
+  "dependencies": {
+    "@angular/common": "^22.3.0",
+    "@angular/compiler": "^22.3.0",
+    "@angular/core": "^22.3.0",
+    "@angular/forms": "^22.3.0",
+    "@angular/platform-browser": "^22.3.0",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0"
+  },
+  "devDependencies": {
+    "@angular/build": "^22.3.0",
+    "@angular/cli": "^22.3.0",
+    "@angular/compiler-cli": "^22.3.0",
+    "@types/node": "^26.6.6",
+    "concurrently": "^10.0.7",
+    "electron": "^45.4.1",
+    "prettier": "^3.8.1",
+    "typescript": "~6.0.2",
+    "wait-on": "^9.5.1"
+  },
+  "description": "Editor de video de escritorio (Electron + Angular + FFmpeg)",
+  "main": "dist-electron/electron/main.js"
+}
