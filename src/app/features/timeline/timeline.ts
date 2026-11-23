@@ -44,6 +44,7 @@ import {
   type TrimLimits,
 } from '../../core/timeline/timeline-ops';
 import { AutofocusDirective } from '../../core/ui/autofocus.directive';
+import { keyframeTimes } from '../../core/timeline/clip-props';
 import { MEDIA_DRAG_TYPE, MediaDragService, TRANSITION_DRAG_TYPE } from '../../core/ui/media-drag.service';
 import { TimelineRuler } from './ruler';
 import { MAX_PPS, MIN_PPS, TimelineViewService } from './timeline-view.service';
@@ -157,6 +158,7 @@ export class Timeline implements AfterViewInit, OnDestroy {
   protected readonly editingTrackId = signal<Id | null>(null);
 
   // ---- Transición seleccionada (inspector) ----
+  protected readonly keyframeTimes = keyframeTimes;
   protected readonly transitionTypes = TRANSITION_TYPES;
   protected readonly transitionLabels = TRANSITION_LABELS;
   protected readonly selectedTransitionInfo = computed(() => {

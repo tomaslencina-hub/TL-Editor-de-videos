@@ -1,22 +1,31 @@
-import { Component, signal } from '@angular/core';
+import { Component, effect, inject, signal, untracked } from '@angular/core';
+import { ProjectStore } from '../../core/state/project-store';
 import { MediaPanel } from '../media-panel/media-panel';
+import { PropertiesPanel } from '../properties/properties-panel';
 import { TransitionsPanel } from '../transitions-panel/transitions-panel';
 
-type Tab = 'media' | 'transitions';
+type Tab = 'media' | 'transitions' | 'props';
 
-/** Panel izquierdo con pestañas: medios importados y transiciones. */
+/** Panel izquierdo con pestañas: medios importados, transiciones y propiedades del clip seleccionado. */
 @Component({
   selector: 'app-library',
-  imports: [MediaPanel, TransitionsPanel],
+  imports: [MediaPanel, TransitionsPanel, PropertiesPanel],
   template: `
     <nav class="tabs" role="tablist">
       <button role="tab" [class.active]="tab() === 'media'" (click)="tab.set('media')">🎞 Medios</button>
       <button role="tab" [class.active]="tab() === 'transitions'" (click)="tab.set('transitions')">✦ Transiciones</button>
+      <button role="tab" [class.active]="tab() === 'props'" (click)="tab.set('props')">⚙ Propiedades</button>
     </nav>
-    @if (tab() === 'media') {
-      <app-media-panel class="content" />
-    } @else {
-      <app-transitions-panel class="content" />
+    @switch (tab()) {
+      @case ('media') {
+        <app-media-panel class="content" />
+      }
+      @case ('transitions') {
+        <app-transitions-panel class="content" />
+      }
+      @case ('props') {
+        <app-properties-panel class="content" />
+      }
     }
   `,
   styles: `
@@ -52,4 +61,12 @@ type Tab = 'media' | 'transitions';
 })
 export class Library {
   protected readonly tab = signal<Tab>('media');
+
+  constructor() {
+    const store = inject(ProjectStore);
+    // Al seleccionar un clip se muestran sus propiedades (como en los editores modernos).
+    effect(() => {
+      if (store.selectedClipId()) untracked(() => this.tab.set('props'));
+    });
+  }
 }

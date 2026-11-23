@@ -1,0 +1,77 @@
+@if (sel.clip(); as clip) {
+  <header>
+    <div class="clip-name" [title]="sel.media()?.path ?? ''">{{ sel.media()?.name ?? 'Clip' }}</div>
+    <div class="clip-meta mono">{{ info()?.start }} · {{ info()?.duration }}</div>
+    <div class="key-nav">
+      <button class="icon small" [disabled]="prevKey() === null" (click)="goToKey(prevKey())" title="Keyframe anterior">◀◆</button>
+      <button class="icon small" [disabled]="nextKey() === null" (click)="goToKey(nextKey())" title="Keyframe siguiente">◆▶</button>
+    </div>
+  </header>
+
+  @if (!sel.playheadInside()) {
+    <p class="hint">Mové el playhead sobre el clip para agregar keyframes.</p>
+  }
+
+  @if (sel.isVisual()) {
+    <section>
+      <div class="section-title">
+        <span>Transformación</span>
+        <button class="link" (click)="reset('transform')" title="Restablecer transformación">Restablecer</button>
+      </div>
+      @for (row of transformRows; track row.prop) {
+        <ng-container [ngTemplateOutlet]="propRow" [ngTemplateOutletContext]="{ $implicit: row }" />
+      }
+    </section>
+
+    <section>
+      <div class="section-title">
+        <span>Color</span>
+        <button class="link" (click)="reset('adjust')" title="Restablecer color">Restablecer</button>
+      </div>
+      @for (row of colorRows; track row.prop) {
+        <ng-container [ngTemplateOutlet]="propRow" [ngTemplateOutletContext]="{ $implicit: row }" />
+      }
+    </section>
+  } @else {
+    <p class="hint">Este clip es solo audio: las opciones de volumen y velocidad llegan en la próxima etapa.</p>
+  }
+
+  <ng-template #propRow let-row>
+    <div class="row">
+      <label [for]="'p-' + row.prop">{{ row.label }}</label>
+      <input
+        type="range"
+        [id]="'p-' + row.prop"
+        [min]="row.min"
+        [max]="row.max"
+        [step]="row.step"
+        [value]="value(row)"
+        (input)="onInput(row, $any($event.target).value)"
+      />
+      <input
+        type="number"
+        class="num"
+        [min]="row.min"
+        [max]="row.max"
+        [step]="row.step"
+        [value]="value(row)"
+        (change)="onInput(row, $any($event.target).value)"
+      />
+      <span class="unit">{{ row.unit }}</span>
+      <button
+        class="kf"
+        [class]="keyState(row)"
+        [disabled]="!sel.playheadInside()"
+        (click)="toggleKey(row)"
+        [title]="keyState(row) === 'here' ? 'Quitar keyframe' : 'Agregar keyframe en el playhead'"
+      >
+        ◆
+      </button>
+    </div>
+  </ng-template>
+} @else {
+  <div class="empty">
+    <div class="big">⬚</div>
+    Seleccioná un clip en la timeline<br />(o hacé clic sobre él en la vista previa)<br />para editar sus propiedades.
+  </div>
+}

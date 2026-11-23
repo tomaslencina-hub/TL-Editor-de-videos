@@ -178,6 +178,11 @@
                 />
               }
               <span class="clip-label">{{ clipName(clip) }}</span>
+              @if (store.selectedClipId() === clip.id) {
+                @for (kt of keyframeTimes(clip); track kt) {
+                  <span class="kf" [style.left.px]="kt * view.pps()" title="Keyframe">◆</span>
+                }
+              }
               <div class="handle start" (pointerdown)="onClipPointerDown($event, clip, row.track, 'start')"></div>
               <div class="handle end" (pointerdown)="onClipPointerDown($event, clip, row.track, 'end')"></div>
             </div>

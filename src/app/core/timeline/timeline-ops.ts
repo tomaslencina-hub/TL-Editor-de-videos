@@ -19,6 +19,7 @@ import {
   type TrackKind,
   type Transition,
 } from '../../../../shared/model';
+import { shiftKeyframes, splitKeyframes } from '../../../../shared/animation';
 import { ADJACENT_EPS } from '../../../../shared/transitions';
 
 export const EPS = 1e-6;
@@ -79,7 +80,7 @@ export function clearRange(clips: Clip[], start: number, end: number, excludeId?
     }
     // Parte derecha que queda después del rango (conserva la transición de salida).
     if (ce > end + EPS) {
-      const right: Clip = withoutTransition({ ...c, start: end, inPoint: c.inPoint + (end - cs) }, 'in');
+      const right: Clip = shiftKeyframes(withoutTransition({ ...c, start: end, inPoint: c.inPoint + (end - cs) }, 'in'), end - cs);
       // Si también hubo parte izquierda, la derecha es un clip nuevo.
       if (cs < start - EPS) right.id = newId('clip');
       out.push(right);
@@ -147,7 +148,7 @@ export function trimClip(project: Project, clipId: Id, edge: TrimEdge, edgeTime:
   const { clip, track } = ref;
   const updated: Clip =
     edge === 'start'
-      ? { ...clip, start: t, inPoint: clip.inPoint + (t - clip.start) }
+      ? shiftKeyframes({ ...clip, start: t, inPoint: clip.inPoint + (t - clip.start) }, t - clip.start)
       : { ...clip, outPoint: clip.inPoint + (t - clip.start) };
   return updateTrack(project, track.id, (tr) => ({
     ...tr,
@@ -163,8 +164,9 @@ export function splitClip(project: Project, clipId: Id, t: number): Project {
   const minDur = 1 / project.settings.fps;
   if (t <= clip.start + minDur - EPS || t >= clipEnd(clip) - minDur + EPS) return project;
   const cut = clip.inPoint + (t - clip.start);
-  const left: Clip = withoutTransition({ ...clip, outPoint: cut }, 'out');
-  const right: Clip = withoutTransition({ ...clip, id: newId('clip'), start: t, inPoint: cut }, 'in');
+  const keys = splitKeyframes(clip, t - clip.start);
+  const left: Clip = withoutTransition({ ...clip, outPoint: cut, keyframes: keys.left }, 'out');
+  const right: Clip = withoutTransition({ ...clip, id: newId('clip'), start: t, inPoint: cut, keyframes: keys.right }, 'in');
   return updateTrack(project, track.id, (tr) => ({
     ...tr,
     clips: sortClips(tr.clips.flatMap((c) => (c.id === clipId ? [left, right] : [c]))),

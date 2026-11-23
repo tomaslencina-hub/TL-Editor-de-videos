@@ -5,7 +5,9 @@
     [style.width.px]="frameSize().w"
     [style.height.px]="frameSize().h"
     [style.background]="store.settings().backgroundColor"
-  ></div>
+  >
+    <app-transform-gizmo [cssWidth]="frameSize().w" />
+  </div>
 </div>
 
 <div class="transport">

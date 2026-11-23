@@ -228,6 +228,17 @@
     }
   }
 
+  .kf {
+    position: absolute;
+    bottom: 1px;
+    margin-left: -5px;
+    font-size: 10px;
+    line-height: 1;
+    color: var(--snap);
+    text-shadow: 0 0 2px #000;
+    pointer-events: none;
+  }
+
   .handle {
     position: absolute;
     top: 0;

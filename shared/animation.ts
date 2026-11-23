@@ -8,6 +8,9 @@ import {
   type Keyframe,
 } from './model';
 
+/** Dos keyframes a menos de esto se consideran el mismo (≈ medio cuadro a 60 fps). */
+export const KEYFRAME_EPS = 1 / 120;
+
 export const TRANSFORM_PROPS = ['x', 'y', 'scale', 'rotation', 'opacity'] as const satisfies readonly (keyof ClipTransform)[];
 export const ADJUST_PROPS = ['brightness', 'contrast', 'saturation', 'temperature'] as const satisfies readonly (keyof ColorAdjust)[];
 export const ANIMATABLE_PROPS: readonly AnimatableProp[] = [...TRANSFORM_PROPS, ...ADJUST_PROPS];
@@ -67,3 +70,30 @@ export function visualParams(clip: Clip, clipTime: number): VisualParams {
   for (const p of ADJUST_PROPS) adjust[p] = propValue(clip, p, clipTime);
   return { transform, adjust };
 }
+
+// ---------------------------------------------------------------------------- edición de clips (dividir / recortar)
+
+/** Desplaza los keyframes cuando cambia el inicio del clip (trim desde el inicio): siguen pegados al contenido. */
+export function shiftKeyframes(clip: Clip, delta: number): Clip {
+  if (!clip.keyframes || delta === 0) return clip;
+  const keyframes: Clip['keyframes'] = {};
+  for (const [prop, keys] of Object.entries(clip.keyframes) as [AnimatableProp, Keyframe[]][]) {
+    keyframes[prop] = keys.map((k) => ({ ...k, time: k.time - delta }));
+  }
+  return { ...clip, keyframes };
+}
+
+/** Parte los keyframes en `offset` (relativo al clip): la izquierda termina y la derecha empieza con el valor exacto del corte. */
+export function splitKeyframes(clip: Clip, offset: number): { left: Clip['keyframes']; right: Clip['keyframes'] } {
+  if (!clip.keyframes) return { left: undefined, right: undefined };
+  const left: NonNullable<Clip['keyframes']> = {};
+  const right: NonNullable<Clip['keyframes']> = {};
+  for (const [prop, keys] of Object.entries(clip.keyframes) as [AnimatableProp, Keyframe[]][]) {
+    if (!keys.length) continue;
+    const at = evaluateKeyframes(keys, offset);
+    left[prop] = [...keys.filter((k) => k.time < offset - KEYFRAME_EPS), { time: offset, value: at }];
+    right[prop] = [{ time: 0, value: at }, ...keys.filter((k) => k.time > offset + KEYFRAME_EPS).map((k) => ({ ...k, time: k.time - offset }))];
+  }
+  return { left, right };
+}
+

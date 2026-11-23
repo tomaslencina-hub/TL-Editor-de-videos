@@ -6,9 +6,12 @@ interface HistoryEntry {
   label: string;
   before: Project;
   after: Project;
+  mergeKey?: string;
+  at: number;
 }
 
 const MAX_HISTORY = 200;
+const MERGE_WINDOW_MS = 1500;
 
 /**
  * Estado del proyecto (fuente de verdad) + historial de comandos.
@@ -47,12 +50,26 @@ export class ProjectStore {
   /** Comparación por referencia: gracias a la inmutabilidad, deshacer hasta lo guardado limpia el flag. */
   readonly dirty = computed(() => this._project() !== this._savedProject());
 
-  dispatch(command: Command): void {
+  /**
+   * Aplica un comando y lo agrega al historial.
+   * `mergeKey`: comandos consecutivos con la misma clave (p. ej. arrastrar un deslizador) se
+   * agrupan en una sola entrada de deshacer, si llegan con menos de MERGE_WINDOW_MS de diferencia.
+   */
+  dispatch(command: Command, options?: { mergeKey?: string }): void {
     const before = this._project();
     const after = command.apply(before);
     if (after === before) return;
     this._project.set(after);
-    this._undo.update((u) => [...u.slice(-(MAX_HISTORY - 1)), { label: command.label, before, after }]);
+    const now = Date.now();
+    const last = this._undo().at(-1);
+    if (options?.mergeKey && last && last.mergeKey === options.mergeKey && now - last.at < MERGE_WINDOW_MS) {
+      this._undo.update((u) => [...u.slice(0, -1), { ...last, after, at: now }]);
+    } else {
+      this._undo.update((u) => [
+        ...u.slice(-(MAX_HISTORY - 1)),
+        { label: command.label, before, after, mergeKey: options?.mergeKey, at: now },
+      ]);
+    }
     this._redo.set([]);
     this.pruneSelection();
   }

@@ -13,6 +13,9 @@ const APP_ICON = path.join(__dirname, '..', '..', 'resources', process.platform 
 
 let mainWindow: BrowserWindow | null = null;
 
+// En desarrollo, sin caché HTTP: evita que Chromium sirva un bundle viejo tras recompilar.
+if (devUrl) app.commandLine.appendSwitch('disable-http-cache');
+
 // En Windows agrupa la ventana en la barra de tareas con identidad (e ícono) propia, no la de Electron.
 if (process.platform === 'win32') app.setAppUserModelId('com.lenstom.editor');
 app.setName('LensTom');
@@ -48,6 +51,11 @@ function createWindow(): void {
 
   // El renderer bloquea el cierre (beforeunload) si hay cambios sin guardar; acá se pregunta.
   mainWindow.webContents.on('will-prevent-unload', (e) => {
+    // En desarrollo el live-reload recarga la página a cada cambio de código: no se pregunta.
+    if (devUrl) {
+      e.preventDefault();
+      return;
+    }
     const choice = dialog.showMessageBoxSync(mainWindow!, {
       type: 'warning',
       buttons: ['Salir sin guardar', 'Cancelar'],

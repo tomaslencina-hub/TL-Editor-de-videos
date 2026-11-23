@@ -2,22 +2,26 @@
   display: flex;
   flex-direction: column;
   background: var(--bg-0);
+  overflow: hidden;
 }
 
 .stage {
   flex: 1;
   min-height: 0;
+  min-width: 0;
   margin: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
+  /* Las manijas de transformación pueden sobresalir del cuadro. */
+  overflow: visible;
+  position: relative;
 }
 
 .frame {
+  /* Absoluto: el tamaño del escenario (que se mide) no depende del cuadro. */
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   box-shadow: 0 0 0 1px var(--border);
-  overflow: hidden;
-  position: relative;
   /* Los <video> de cada pista los crea el motor de reproducción. */
   isolation: isolate;
 }

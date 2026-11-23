@@ -1,4 +1,5 @@
-import type { Clip, Id, MediaSource, Project, ProjectSettings, Track, TrackKind, Transition } from '../../../../shared/model';
+import type { AnimatableProp, Clip, Id, MediaSource, Project, ProjectSettings, Track, TrackKind, Transition } from '../../../../shared/model';
+import * as props from '../timeline/clip-props';
 import * as ops from '../timeline/timeline-ops';
 
 /**
@@ -50,6 +51,15 @@ export const Commands = {
   removeTrack: (trackId: Id) => cmd('Quitar pista', (p) => ops.removeTrack(p, trackId)),
 
   renameTrack: (trackId: Id, name: string) => cmd('Renombrar pista', (p) => ops.updateTrackProps(p, trackId, { name })),
+
+  setClipProps: (clipId: Id, values: Partial<Record<AnimatableProp, number>>, clipTime: number) =>
+    cmd('Cambiar propiedades', (p) => props.setClipProps(p, clipId, values, clipTime)),
+
+  toggleKeyframe: (clipId: Id, prop: AnimatableProp, clipTime: number) =>
+    cmd('Keyframe', (p) => props.toggleKeyframe(p, clipId, prop, clipTime)),
+
+  resetClipProps: (clipId: Id, group: 'transform' | 'adjust') =>
+    cmd(group === 'transform' ? 'Restablecer transformación' : 'Restablecer color', (p) => props.resetClipProps(p, clipId, group)),
 
   setTransition: (clipId: Id, edge: ops.ClipEdge, transition: Transition | null) =>
     cmd(transition ? 'Aplicar transición' : 'Quitar transición', (p) => ops.setTransition(p, clipId, edge, transition)),

@@ -50,7 +50,7 @@ export class WebGLEngine implements PlaybackEngine {
   attach(surface: PlaybackSurface): void {
     this.container = surface.container;
     this.canvas = document.createElement('canvas');
-    Object.assign(this.canvas.style, { width: '100%', height: '100%', display: 'block' });
+    Object.assign(this.canvas.style, { position: 'absolute', inset: '0', width: '100%', height: '100%', display: 'block' });
     this.holder = document.createElement('div');
     // Los elementos multimedia quedan en el DOM pero invisibles (fuente de cuadros y audio).
     Object.assign(this.holder.style, { position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', opacity: '0', pointerEvents: 'none' });
