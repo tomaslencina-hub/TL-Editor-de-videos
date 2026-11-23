@@ -1,4 +1,4 @@
-import { clipDuration, projectDuration, type Clip, type MediaSource, type Project, type Track } from '../../shared/model';
+import { clipDuration, clipSpeed, projectDuration, type Clip, type MediaSource, type Project, type Track } from '../../shared/model';
 import { ADJACENT_EPS, crossExtensions, resolveTransitions, type ResolvedTransition } from '../../shared/transitions';
 
 /**
@@ -76,21 +76,32 @@ export function buildAudioPlan(project: Project, inputOffset = 0): AudioPlan {
     const ext = extensions.get(clip.id) ?? { head: 0, tail: 0 };
     const len = ext.head + clipDuration(clip) + ext.tail;
     let l: string;
-    if (media?.hasAudio) {
-      let srcStart = clip.inPoint - ext.head;
-      const preHold = Math.max(0, -srcStart);
+    if (media?.hasAudio && !clip.audioMuted) {
+      const sp = clipSpeed(clip);
+      // Las extensiones de transición están en segundos de timeline; en el archivo valen × velocidad.
+      let srcStart = clip.inPoint - ext.head * sp;
+      const preHold = Math.max(0, -srcStart) / sp;
       srcStart = Math.max(0, srcStart);
-      const srcEnd = Math.max(srcStart + 0.001, Math.min(clip.outPoint + ext.tail, media.duration));
+      const srcEnd = Math.max(srcStart + 0.001, Math.min(clip.outPoint + ext.tail * sp, media.duration));
       const idx = inputOffset + inputCount++;
       inputArgs.push('-ss', num(srcStart), '-t', num(srcEnd - srcStart), '-i', media.path);
       l = label('ac');
       const delayMs = Math.round(preHold * 1000);
-      filters.push(
-        `[${idx}:a:0]${aFormat},asetpts=PTS-STARTPTS,` +
-          (delayMs > 0 ? `adelay=${delayMs}:all=1,` : '') +
-          // apad + atrim garantizan la duración exacta aunque el audio fuente sea más corto.
-          `apad,atrim=duration=${num(len)},asetpts=PTS-STARTPTS[${l}]`,
-      );
+      const clipDur = clipDuration(clip);
+      const parts = [
+        `[${idx}:a:0]${aFormat}`,
+        'asetpts=PTS-STARTPTS',
+        ...atempoChain(sp),
+        delayMs > 0 ? `adelay=${delayMs}:all=1` : null,
+        // apad + atrim garantizan la duración exacta aunque el audio fuente sea más corto.
+        'apad',
+        `atrim=duration=${num(len)}`,
+        'asetpts=PTS-STARTPTS',
+        volumeFilter(clip, ext.head),
+        (clip.audioFadeIn ?? 0) > 0 ? `afade=t=in:st=${num(ext.head)}:d=${num(clip.audioFadeIn!)}` : null,
+        (clip.audioFadeOut ?? 0) > 0 ? `afade=t=out:st=${num(ext.head + clipDur - clip.audioFadeOut!)}:d=${num(clip.audioFadeOut!)}` : null,
+      ].filter(Boolean);
+      filters.push(`${parts[0]},${parts.slice(1).join(',')}[${l}]`);
     } else {
       l = silence(len);
     }
@@ -147,4 +158,44 @@ export function buildAudioPlan(project: Project, inputOffset = 0): AudioPlan {
   }
 
   return { inputArgs, filterGraph: filters.join(';\n'), duration: total };
+}
+
+/** atempo admite 0.5–100 por instancia: velocidades extremas se encadenan. Conserva el tono. */
+function atempoChain(speed: number): string[] {
+  if (Math.abs(speed - 1) < 1e-6) return [];
+  const out: string[] = [];
+  let s = speed;
+  while (s > 2) {
+    out.push('atempo=2');
+    s /= 2;
+  }
+  while (s < 0.5) {
+    out.push('atempo=0.5');
+    s /= 0.5;
+  }
+  out.push(`atempo=${num(s)}`);
+  return out;
+}
+
+/**
+ * Volumen del clip: constante, o una expresión lineal por tramos si tiene keyframes de volumen.
+ * `offset` = segundos de extensión antes del inicio del clip (t=0 del segmento).
+ */
+function volumeFilter(clip: Clip, offset: number): string | null {
+  const keys = clip.keyframes?.volume;
+  if (keys && keys.length > 1) {
+    const k = keys.map((key) => ({ t: key.time + offset, v: key.value }));
+    let expr = num(k[k.length - 1].v);
+    for (let i = k.length - 2; i >= 0; i--) {
+      const a = k[i];
+      const b = k[i + 1];
+      const span = Math.max(1e-6, b.t - a.t);
+      expr = `if(lt(t,${num(b.t)}),${num(a.v)}+(${num(b.v - a.v)})*(t-${num(a.t)})/${num(span)},${expr})`;
+    }
+    expr = `if(lt(t,${num(k[0].t)}),${num(k[0].v)},${expr})`;
+    // Entre comillas simples: las comas de la expresión no separan filtros del filtergraph.
+    return `volume='${expr}':eval=frame`;
+  }
+  const v = keys?.length === 1 ? keys[0].value : (clip.volume ?? 1);
+  return Math.abs(v - 1) > 1e-6 ? `volume=${num(v)}` : null;
 }

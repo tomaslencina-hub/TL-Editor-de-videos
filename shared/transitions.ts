@@ -72,7 +72,8 @@ export type ResolvedTransition =
   | { kind: 'in'; type: TransitionType; duration: number; start: number; end: number; to: Clip }
   | { kind: 'out'; type: TransitionType; duration: number; start: number; end: number; from: Clip };
 
-const dur = (c: Clip) => c.outPoint - c.inPoint;
+// Igual que clipDuration (model.ts); se repite para no crear una dependencia circular en runtime.
+const dur = (c: Clip) => (c.outPoint - c.inPoint) / (c.speed && c.speed > 0 ? c.speed : 1);
 const end = (c: Clip) => c.start + dur(c);
 
 /**

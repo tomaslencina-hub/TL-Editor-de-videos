@@ -13,7 +13,7 @@ export const KEYFRAME_EPS = 1 / 120;
 
 export const TRANSFORM_PROPS = ['x', 'y', 'scale', 'rotation', 'opacity'] as const satisfies readonly (keyof ClipTransform)[];
 export const ADJUST_PROPS = ['brightness', 'contrast', 'saturation', 'temperature'] as const satisfies readonly (keyof ColorAdjust)[];
-export const ANIMATABLE_PROPS: readonly AnimatableProp[] = [...TRANSFORM_PROPS, ...ADJUST_PROPS];
+export const ANIMATABLE_PROPS: readonly AnimatableProp[] = [...TRANSFORM_PROPS, ...ADJUST_PROPS, 'volume'];
 
 export interface VisualParams {
   transform: ClipTransform;
@@ -56,6 +56,7 @@ export function evaluateKeyframes(keys: readonly Keyframe[], time: number): numb
 export function propValue(clip: Clip, prop: AnimatableProp, clipTime: number): number {
   const keys = clip.keyframes?.[prop];
   if (keys && keys.length) return evaluateKeyframes(keys, clipTime);
+  if (prop === 'volume') return clip.volume ?? 1;
   if (prop in DEFAULT_TRANSFORM) {
     return clip.transform?.[prop as keyof ClipTransform] ?? DEFAULT_TRANSFORM[prop as keyof ClipTransform];
   }
@@ -97,3 +98,15 @@ export function splitKeyframes(clip: Clip, offset: number): { left: Clip['keyfra
   return { left, right };
 }
 
+
+// ---------------------------------------------------------------------------- audio
+
+/** Ganancia lineal del clip en `clipTime`: volumen (con keyframes) × fundidos de entrada/salida. */
+export function audioGain(clip: Clip, clipTime: number, clipDur: number): number {
+  let g = propValue(clip, 'volume', clipTime);
+  const fin = clip.audioFadeIn ?? 0;
+  const fout = clip.audioFadeOut ?? 0;
+  if (fin > 0) g *= Math.min(1, Math.max(0, clipTime / fin));
+  if (fout > 0) g *= Math.min(1, Math.max(0, (clipDur - clipTime) / fout));
+  return Math.max(0, g);
+}

@@ -12,7 +12,7 @@ import {
   viewChild,
   type AfterViewInit,
 } from '@angular/core';
-import { clipDuration, clipEnd, type Clip, type Id, type MediaSource, type Track, type TrackKind } from '../../../../shared/model';
+import { clipDuration, clipEnd, clipSpeed, sourceTime, type Clip, type Id, type MediaSource, type Track, type TrackKind } from '../../../../shared/model';
 import {
   DEFAULT_TRANSITION_DURATION,
   MIN_TRANSITION_DURATION,
@@ -209,7 +209,9 @@ export class Timeline implements AfterViewInit, OnDestroy {
 
   protected clipName(clip: Clip): string {
     if (clip.text) return `T  ${clip.text.text.split('\n')[0] || 'Texto'}`;
-    return this.mediaById().get(clip.sourceId)?.name ?? '¿medio desconocido?';
+    const name = this.mediaById().get(clip.sourceId)?.name ?? '¿medio desconocido?';
+    const sp = clipSpeed(clip);
+    return sp !== 1 ? `${name} · ${Math.round(sp * 100) / 100}×` : name;
   }
 
   protected media(clip: Clip): MediaSource | undefined {
@@ -387,8 +389,8 @@ export class Timeline implements AfterViewInit, OnDestroy {
     const c = it.clip;
     const p: ClipPreview =
       it.edge === 'start'
-        ? { clipId: c.id, trackId: it.trackId, start: edge, inPoint: c.inPoint + (edge - c.start), outPoint: c.outPoint }
-        : { clipId: c.id, trackId: it.trackId, start: c.start, inPoint: c.inPoint, outPoint: c.inPoint + (edge - c.start) };
+        ? { clipId: c.id, trackId: it.trackId, start: edge, inPoint: sourceTime(c, edge), outPoint: c.outPoint }
+        : { clipId: c.id, trackId: it.trackId, start: c.start, inPoint: c.inPoint, outPoint: sourceTime(c, edge) };
     this.snapLine.set(snapPoint !== null && Math.abs(snapPoint - edge) < 1e-6 ? snapPoint : null);
     this.preview.set(p);
   }
@@ -407,7 +409,7 @@ export class Timeline implements AfterViewInit, OnDestroy {
         this.store.dispatch(Commands.moveClip(it.clip.id, p.trackId, p.start));
       }
     } else if (it.kind === 'trim') {
-      const edgeTime = it.edge === 'start' ? p.start : p.start + (p.outPoint - p.inPoint);
+      const edgeTime = it.edge === 'start' ? p.start : p.start + (p.outPoint - p.inPoint) / clipSpeed(it.clip);
       const original = it.edge === 'start' ? it.clip.start : clipEnd(it.clip);
       if (Math.abs(edgeTime - original) > 1e-9) {
         this.store.dispatch(Commands.trimClip(it.clip.id, it.edge, edgeTime));

@@ -7,6 +7,7 @@ import { PlaybackService } from '../../core/playback/playback.service';
 import { ProjectStore } from '../../core/state/project-store';
 import { SelectedClipService } from '../../core/state/selected-clip.service';
 import { hasKeyframeAt, keyframeTimes, KEYFRAME_EPS } from '../../core/timeline/clip-props';
+import type { ClipAudioPatch } from '../../core/timeline/timeline-ops';
 import { formatTimecode } from '../../core/timeline/time';
 import { FONT_FAMILIES, TEXT_ANIMATION_LABELS, TEXT_ANIMATIONS, type TextContent } from '../../../../shared/text';
 
@@ -69,6 +70,32 @@ export class PropertiesPanel {
   }
 
   protected readonly transformRows = TRANSFORM_ROWS;
+  protected readonly volumeRow: PropRow = { prop: 'volume', label: 'Volumen', min: 0, max: 200, step: 1, unit: '%', ...pct };
+  protected readonly speedPresets = [0.25, 0.5, 1, 1.5, 2, 4];
+
+  protected readonly isMedia = computed(() => !!this.sel.media() && !this.sel.clip()?.text);
+  protected readonly hasAudio = computed(() => this.isMedia() && !!this.sel.media()?.hasAudio);
+  protected readonly canDetach = computed(
+    () => this.hasAudio() && this.sel.track()?.kind === 'video' && !this.sel.clip()?.audioMuted,
+  );
+  protected readonly speed = computed(() => this.sel.clip()?.speed ?? 1);
+
+  protected setSpeed(speed: number): void {
+    const clip = this.sel.clip();
+    if (!clip || !Number.isFinite(speed) || speed <= 0 || this.sel.track()?.locked) return;
+    this.store.dispatch(Commands.setSpeed(clip.id, speed));
+  }
+
+  protected setAudio(patch: ClipAudioPatch, mergeKey?: string): void {
+    const clip = this.sel.clip();
+    if (!clip || this.sel.track()?.locked) return;
+    this.store.dispatch(Commands.setClipAudio(clip.id, patch), mergeKey ? { mergeKey: `${mergeKey}:${clip.id}` } : undefined);
+  }
+
+  protected detachAudio(): void {
+    const clip = this.sel.clip();
+    if (clip) this.store.dispatch(Commands.detachAudio(clip.id));
+  }
   protected readonly colorRows = COLOR_ROWS;
 
   protected readonly info = computed(() => {

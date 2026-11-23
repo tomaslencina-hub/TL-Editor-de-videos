@@ -30,6 +30,7 @@ function mapClip(project: Project, clipId: Id, fn: (c: Clip) => Clip): Project {
 }
 
 function withStatic(clip: Clip, prop: AnimatableProp, value: number): Clip {
+  if (prop === 'volume') return { ...clip, volume: value };
   return isTransformProp(prop)
     ? { ...clip, transform: { ...clip.transform, [prop]: value } }
     : { ...clip, adjust: { ...clip.adjust, [prop]: value } };

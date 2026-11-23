@@ -9,7 +9,9 @@
 import {
   clipDuration,
   clipEnd,
+  clipSpeed,
   nextTrackName,
+  sourceTime,
   type Clip,
   type Id,
   type MediaSource,
@@ -75,13 +77,14 @@ export function clearRange(clips: Clip[], start: number, end: number, excludeId?
       out.push(c);
       continue;
     }
+    const sp = clipSpeed(c);
     // Parte izquierda que queda antes del rango (conserva la transición de entrada).
     if (cs < start - EPS) {
-      out.push(withoutTransition({ ...c, outPoint: c.inPoint + (start - cs) }, 'out'));
+      out.push(withoutTransition({ ...c, outPoint: c.inPoint + (start - cs) * sp }, 'out'));
     }
     // Parte derecha que queda después del rango (conserva la transición de salida).
     if (ce > end + EPS) {
-      const right: Clip = shiftKeyframes(withoutTransition({ ...c, start: end, inPoint: c.inPoint + (end - cs) }, 'in'), end - cs);
+      const right: Clip = shiftKeyframes(withoutTransition({ ...c, start: end, inPoint: c.inPoint + (end - cs) * sp }, 'in'), end - cs);
       // Si también hubo parte izquierda, la derecha es un clip nuevo.
       if (cs < start - EPS) right.id = newId('clip');
       out.push(right);
@@ -125,18 +128,19 @@ export function trimLimits(project: Project, clipId: Id, edge: TrimEdge): TrimLi
   const { clip, track } = ref;
   const media = findMedia(project, clip.sourceId);
   const sourceDuration = clip.text ? Number.POSITIVE_INFINITY : (media?.duration ?? clip.outPoint);
+  const sp = clipSpeed(clip);
   const minDur = 1 / project.settings.fps;
   const others = track.clips.filter((c) => c.id !== clipId);
 
   if (edge === 'start') {
     const prevEnd = Math.max(0, ...others.filter((c) => clipEnd(c) <= clip.start + EPS).map(clipEnd));
-    const min = Math.max(prevEnd, clip.start - clip.inPoint);
+    const min = Math.max(prevEnd, clip.start - clip.inPoint / sp);
     const max = clipEnd(clip) - minDur;
     return { min, max };
   }
   const nextStart = Math.min(Infinity, ...others.filter((c) => c.start >= clipEnd(clip) - EPS).map((c) => c.start));
   const min = clip.start + minDur;
-  const max = Math.min(nextStart, clip.start + (sourceDuration - clip.inPoint));
+  const max = Math.min(nextStart, clip.start + (sourceDuration - clip.inPoint) / sp);
   return { min, max };
 }
 
@@ -149,8 +153,8 @@ export function trimClip(project: Project, clipId: Id, edge: TrimEdge, edgeTime:
   const { clip, track } = ref;
   const updated: Clip =
     edge === 'start'
-      ? shiftKeyframes({ ...clip, start: t, inPoint: clip.inPoint + (t - clip.start) }, t - clip.start)
-      : { ...clip, outPoint: clip.inPoint + (t - clip.start) };
+      ? shiftKeyframes({ ...clip, start: t, inPoint: sourceTime(clip, t) }, t - clip.start)
+      : { ...clip, outPoint: sourceTime(clip, t) };
   return updateTrack(project, track.id, (tr) => ({
     ...tr,
     clips: tr.clips.map((c) => (c.id === clipId ? updated : c)),
@@ -164,7 +168,7 @@ export function splitClip(project: Project, clipId: Id, t: number): Project {
   const { clip, track } = ref;
   const minDur = 1 / project.settings.fps;
   if (t <= clip.start + minDur - EPS || t >= clipEnd(clip) - minDur + EPS) return project;
-  const cut = clip.inPoint + (t - clip.start);
+  const cut = sourceTime(clip, t);
   const keys = splitKeyframes(clip, t - clip.start);
   const left: Clip = withoutTransition({ ...clip, outPoint: cut, keyframes: keys.left }, 'out');
   const right: Clip = withoutTransition({ ...clip, id: newId('clip'), start: t, inPoint: cut, keyframes: keys.right }, 'in');
@@ -292,6 +296,79 @@ export function setTransition(project: Project, clipId: Id, edge: ClipEdge, tran
     ...t,
     clips: t.clips.map((c) => (c.id === clipId ? updated : c)),
   }));
+}
+
+// ---------------------------------------------------------------------------- audio y velocidad
+
+export type ClipAudioPatch = Partial<Pick<Clip, 'volume' | 'audioFadeIn' | 'audioFadeOut' | 'audioMuted'>>;
+
+export function setClipFields(project: Project, clipId: Id, patch: ClipAudioPatch): Project {
+  const ref = findClip(project, clipId);
+  if (!ref) return project;
+  return updateTrack(project, ref.track.id, (t) => ({
+    ...t,
+    clips: t.clips.map((c) => (c.id === clipId ? { ...c, ...patch } : c)),
+  }));
+}
+
+export const MIN_SPEED = 0.1;
+export const MAX_SPEED = 16;
+
+/**
+ * Cambia la velocidad manteniendo el inicio y el material del clip. Si al hacerse más lento
+ * chocaría con el clip siguiente, se recorta el final. Los keyframes se escalan con la duración.
+ */
+export function setClipSpeed(project: Project, clipId: Id, speed: number): Project {
+  const ref = findClip(project, clipId);
+  if (!ref) return project;
+  const { clip, track } = ref;
+  const sp = Math.min(MAX_SPEED, Math.max(MIN_SPEED, speed));
+  const oldSp = clipSpeed(clip);
+  if (Math.abs(sp - oldSp) < 1e-9) return project;
+  let outPoint = clip.outPoint;
+  const next = track.clips
+    .filter((c) => c.id !== clip.id && c.start >= clipEnd(clip) - EPS)
+    .reduce((min, c) => Math.min(min, c.start), Infinity);
+  if (clip.start + (outPoint - clip.inPoint) / sp > next + EPS) outPoint = clip.inPoint + (next - clip.start) * sp;
+  const ratio = oldSp / sp;
+  const keyframes = clip.keyframes
+    ? Object.fromEntries(Object.entries(clip.keyframes).map(([p, keys]) => [p, keys!.map((k) => ({ ...k, time: k.time * ratio }))]))
+    : undefined;
+  const updated: Clip = { ...clip, speed: sp === 1 ? undefined : sp, outPoint, keyframes };
+  return updateTrack(project, track.id, (t) => ({ ...t, clips: t.clips.map((c) => (c.id === clipId ? updated : c)) }));
+}
+
+/**
+ * "Separar audio": copia el audio de un clip de video a una pista de audio libre (o nueva)
+ * y silencia el audio del clip original.
+ */
+export function detachAudio(project: Project, clipId: Id): { project: Project; audioClipId: Id | null } {
+  const ref = findClip(project, clipId);
+  const media = ref ? findMedia(project, ref.clip.sourceId) : undefined;
+  if (!ref || ref.track.kind !== 'video' || !media?.hasAudio || ref.clip.audioMuted) return { project, audioClipId: null };
+  const c = ref.clip;
+  const audio: Clip = {
+    id: newId('clip'),
+    sourceId: c.sourceId,
+    start: c.start,
+    inPoint: c.inPoint,
+    outPoint: c.outPoint,
+    speed: c.speed,
+    volume: c.volume,
+    audioFadeIn: c.audioFadeIn,
+    audioFadeOut: c.audioFadeOut,
+    keyframes: c.keyframes?.volume ? { volume: c.keyframes.volume } : undefined,
+  };
+  let p = setClipFields(project, clipId, { audioMuted: true });
+  const s = audio.start;
+  const e = clipEnd(audio);
+  let target = p.tracks.find((t) => t.kind === 'audio' && !t.locked && !t.clips.some((x) => x.start < e - EPS && clipEnd(x) > s + EPS));
+  if (!target) {
+    const added = addTrack(p, 'audio');
+    p = added.project;
+    target = added.track;
+  }
+  return { project: insertClip(p, target.id, audio), audioClipId: audio.id };
 }
 
 // ---------------------------------------------------------------------------- texto

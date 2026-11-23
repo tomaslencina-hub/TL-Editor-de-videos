@@ -89,11 +89,20 @@ export interface Clip {
    */
   keyframes?: Partial<Record<AnimatableProp, Keyframe[]>>;
 
-  // ---- Futuro (no implementado todavía) ----
-  /** Volumen lineal (1 = original). */
+  /** Volumen lineal (1 = original, 2 = +6 dB). Animable con keyframes ("volume"). */
   volume?: number;
-  /** Velocidad de reproducción (1 = normal). */
+  /** Fundido de audio al inicio / final del clip (s). */
+  audioFadeIn?: number;
+  audioFadeOut?: number;
+  /** Silencia el audio propio del clip (p. ej. tras "Separar audio"). */
+  audioMuted?: boolean;
+  /**
+   * Velocidad de reproducción (1 = normal, 2 = el doble de rápido). La duración en la timeline es
+   * (outPoint - inPoint) / speed; el tiempo dentro del archivo avanza `speed` segundos por segundo.
+   */
   speed?: number;
+
+  // ---- Futuro (no implementado todavía) ----
   effects?: Effect[];
 }
 
@@ -128,7 +137,7 @@ export interface ColorAdjust {
 export const DEFAULT_TRANSFORM: ClipTransform = { x: 0, y: 0, scale: 1, rotation: 0, opacity: 1 };
 export const DEFAULT_ADJUST: ColorAdjust = { brightness: 0, contrast: 1, saturation: 1, temperature: 0 };
 
-export type AnimatableProp = keyof ClipTransform | keyof ColorAdjust;
+export type AnimatableProp = keyof ClipTransform | keyof ColorAdjust | 'volume';
 
 /** Futuro: filtros/efectos aplicados al clip. */
 export interface Effect {
@@ -168,8 +177,19 @@ export interface Project {
 // Helpers puros (usables desde main y renderer)
 // ---------------------------------------------------------------------------
 
+/** Velocidad efectiva del clip. */
+export function clipSpeed(clip: Clip): number {
+  return clip.speed && clip.speed > 0 ? clip.speed : 1;
+}
+
+/** Duración en la timeline (tiene en cuenta la velocidad). */
 export function clipDuration(clip: Clip): number {
-  return clip.outPoint - clip.inPoint;
+  return (clip.outPoint - clip.inPoint) / clipSpeed(clip);
+}
+
+/** Tiempo dentro del archivo fuente para un instante t de la timeline. */
+export function sourceTime(clip: Clip, t: number): number {
+  return clip.inPoint + (t - clip.start) * clipSpeed(clip);
 }
 
 export function clipEnd(clip: Clip): number {

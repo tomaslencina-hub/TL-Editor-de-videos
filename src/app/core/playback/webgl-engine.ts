@@ -1,5 +1,6 @@
 import { inject, Injectable } from '@angular/core';
-import type { MediaSource, Project, Track } from '../../../../shared/model';
+import { audioGain } from '../../../../shared/animation';
+import { clipDuration, clipSpeed, type MediaSource, type Project, type Track } from '../../../../shared/model';
 import { TL_API } from '../ipc/tl-api';
 import { MediaLibraryService } from '../media/media-library.service';
 import { Compositor } from '../render/compositor';
@@ -18,6 +19,8 @@ const MAX_PREVIEW_WIDTH = 1920;
 
 interface Slot {
   el: HTMLMediaElement;
+  /** Ganancia (Web Audio): permite volumen > 100 % y fundidos sin tocar el elemento. */
+  gain: GainNode | null;
   clipId: string | null;
   /** Clip cuyo cuadro está en la textura de este slot. */
   textureClipId: string | null;
@@ -143,7 +146,10 @@ export class WebGLEngine implements PlaybackEngine {
     }
     for (const track of project.tracks) {
       if (this.outputs.has(track.id)) continue;
-      const make = (): Slot => ({ el: this.createElement(track.kind), clipId: null, textureClipId: null });
+      const make = (): Slot => {
+        const el = this.createElement(track.kind);
+        return { el, gain: this.connectAudio(el), clipId: null, textureClipId: null };
+      };
       this.outputs.set(track.id, { kind: track.kind, slots: [make(), make()] });
     }
   }
@@ -161,6 +167,21 @@ export class WebGLEngine implements PlaybackEngine {
     }
     this.holder!.appendChild(el);
     return el;
+  }
+
+  private audioCtx: AudioContext | null = null;
+
+  /** Enruta el audio del elemento por un GainNode (necesita CORS: el protocolo media:// lo habilita). */
+  private connectAudio(el: HTMLMediaElement): GainNode | null {
+    try {
+      this.audioCtx ??= new AudioContext();
+      const gain = this.audioCtx.createGain();
+      this.audioCtx.createMediaElementSource(el).connect(gain).connect(this.audioCtx.destination);
+      return gain;
+    } catch (e) {
+      console.warn('Web Audio no disponible, se usa el volumen del elemento', e);
+      return null;
+    }
   }
 
   private destroy(el: HTMLMediaElement): void {
@@ -201,13 +222,20 @@ export class WebGLEngine implements PlaybackEngine {
         slot.clipId = null;
         continue;
       }
-      // Fundido de volumen durante transiciones.
+      // Volumen = fundido de transición × volumen/fundidos del clip.
       let volume = 1;
-      if (progress !== undefined && layer.role !== 'main') volume = layer.role === 'to' ? progress : 1 - progress;
-      if (kind === undefined) volume = 1;
+      if (kind !== undefined && progress !== undefined && layer.role !== 'main') volume = layer.role === 'to' ? progress : 1 - progress;
+      volume *= audioGain(layer.clip, time - layer.clip.start, clipDuration(layer.clip));
+      const muted = track.muted || !!layer.clip.audioMuted;
       this.syncSlot(slot, layer, media, time, playing, project.settings.fps);
-      slot.el.muted = track.muted;
-      slot.el.volume = Math.min(1, Math.max(0, volume));
+      if (slot.gain) {
+        slot.el.muted = false;
+        slot.el.volume = 1;
+        slot.gain.gain.value = muted ? 0 : volume;
+      } else {
+        slot.el.muted = muted;
+        slot.el.volume = Math.min(1, Math.max(0, volume));
+      }
     }
   }
 
@@ -220,6 +248,8 @@ export class WebGLEngine implements PlaybackEngine {
     }
     const clipChanged = slot.clipId !== layer.clip.id;
     slot.clipId = layer.clip.id;
+    const rate = clipSpeed(layer.clip);
+    if (el.playbackRate !== rate) el.playbackRate = rate;
 
     // Fuera del material disponible (extensión de una transición): se congela el primer/último cuadro.
     const maxLocal = Math.max(0, media.duration - END_MARGIN);
@@ -231,6 +261,7 @@ export class WebGLEngine implements PlaybackEngine {
     if (needsSeek) el.currentTime = target;
 
     if (playing && !hold && el.paused) {
+      if (this.audioCtx?.state === 'suspended') void this.audioCtx.resume();
       el.play().catch(() => {
         /* interrumpido por un cambio de src o pausa: se reintenta en el próximo frame */
       });

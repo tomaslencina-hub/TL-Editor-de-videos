@@ -1,4 +1,4 @@
-import type { Clip, Track } from '../../../../shared/model';
+import { sourceTime, type Clip, type Track } from '../../../../shared/model';
 import type { ResolvedTransition, TransitionType } from '../../../../shared/transitions';
 import { clipAt } from '../timeline/timeline-ops';
 
@@ -20,7 +20,7 @@ export interface TrackFrame {
   transition?: { type: TransitionType; kind: ResolvedTransition['kind']; progress: number };
 }
 
-const local = (clip: Clip, t: number) => clip.inPoint + (t - clip.start);
+const local = (clip: Clip, t: number) => sourceTime(clip, t);
 
 export function composeTrack(track: Track, transitions: ResolvedTransition[], t: number): TrackFrame {
   for (const tr of transitions) {

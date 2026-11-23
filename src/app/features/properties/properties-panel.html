@@ -130,9 +130,62 @@
       }
     </section>
     }
-  } @else {
-    <p class="hint">Este clip es solo audio: las opciones de volumen y velocidad llegan en la próxima etapa.</p>
   }
+
+  @if (isMedia()) {
+    <section>
+      <div class="section-title"><span>Velocidad</span></div>
+      <div class="speed">
+        @for (s of speedPresets; track s) {
+          <button class="icon small" [class.active]="speed() === s" (click)="setSpeed(s)">{{ s }}×</button>
+        }
+        <input
+          type="number"
+          class="num"
+          min="0.1"
+          max="16"
+          step="0.05"
+          [value]="speed()"
+          (change)="setSpeed(+$any($event.target).value)"
+          title="Velocidad personalizada"
+        />
+      </div>
+    </section>
+  }
+
+  @if (hasAudio()) {
+    <section>
+      <div class="section-title">
+        <span>Audio</span>
+        @if (canDetach()) {
+          <button class="link" (click)="detachAudio()" title="Pasar el audio a una pista de audio">Separar audio</button>
+        }
+      </div>
+      @if (sel.clip()?.audioMuted) {
+        <p class="hint">El audio de este clip está silenciado (por ejemplo, porque se separó a una pista de audio).</p>
+      }
+      <ng-container [ngTemplateOutlet]="propRow" [ngTemplateOutletContext]="{ $implicit: volumeRow }" />
+      <div class="row">
+        <label>Fundido entrada</label>
+        <input type="range" min="0" max="5" step="0.1" [value]="sel.clip()?.audioFadeIn ?? 0" (input)="setAudio({ audioFadeIn: +$any($event.target).value }, 'fade-in')" />
+        <input type="number" class="num" min="0" max="10" step="0.1" [value]="sel.clip()?.audioFadeIn ?? 0" (change)="setAudio({ audioFadeIn: +$any($event.target).value })" />
+        <span class="unit">s</span>
+        <span></span>
+      </div>
+      <div class="row">
+        <label>Fundido salida</label>
+        <input type="range" min="0" max="5" step="0.1" [value]="sel.clip()?.audioFadeOut ?? 0" (input)="setAudio({ audioFadeOut: +$any($event.target).value }, 'fade-out')" />
+        <input type="number" class="num" min="0" max="10" step="0.1" [value]="sel.clip()?.audioFadeOut ?? 0" (change)="setAudio({ audioFadeOut: +$any($event.target).value })" />
+        <span class="unit">s</span>
+        <span></span>
+      </div>
+      <label class="mute">
+        <input type="checkbox" [checked]="!!sel.clip()?.audioMuted" (change)="setAudio({ audioMuted: $any($event.target).checked })" />
+        Silenciar el audio de este clip
+      </label>
+    </section>
+  }
+
 
   <ng-template #propRow let-row>
     <div class="row">
