@@ -7,15 +7,10 @@
 }
 
 .brand {
-  font-weight: 700;
-  font-size: 15px;
-  letter-spacing: 0.5px;
-  color: var(--accent);
-  span {
-    color: var(--text-0);
-    font-weight: 400;
-    margin-left: 2px;
-  }
+  height: 38px;
+  width: auto;
+  margin: -4px 4px -4px -4px;
+  display: block;
 }
 
 .group {

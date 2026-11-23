@@ -31,6 +31,7 @@
     "typescript": "~6.0.2",
     "wait-on": "^9.5.1"
   },
-  "description": "Editor de video de escritorio (Electron + Angular + FFmpeg)",
-  "main": "dist-electron/electron/main.js"
+  "description": "LensTom — editor de video de escritorio (Electron + Angular + FFmpeg)",
+  "main": "dist-electron/electron/main.js",
+  "productName": "LensTom"
 }

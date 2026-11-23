@@ -52,7 +52,7 @@ export function registerIpc(getWindow: () => BrowserWindow | null): void {
       const opts: Electron.SaveDialogOptions = {
         title: 'Guardar proyecto',
         defaultPath: `${project.name || 'proyecto'}.vproj`,
-        filters: [{ name: 'Proyecto TL Editor', extensions: ['vproj'] }],
+        filters: [{ name: 'Proyecto LensTom', extensions: ['vproj'] }],
       };
       const res = win ? await dialog.showSaveDialog(win, opts) : await dialog.showSaveDialog(opts);
       if (res.canceled || !res.filePath) return null;
@@ -70,7 +70,7 @@ export function registerIpc(getWindow: () => BrowserWindow | null): void {
     const opts: Electron.OpenDialogOptions = {
       title: 'Abrir proyecto',
       properties: ['openFile'],
-      filters: [{ name: 'Proyecto TL Editor', extensions: ['vproj'] }],
+      filters: [{ name: 'Proyecto LensTom', extensions: ['vproj'] }],
     };
     const res = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
     if (res.canceled || res.filePaths.length === 0) return null;

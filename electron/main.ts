@@ -8,7 +8,14 @@ import { buildMenu } from './menu';
 /** En desarrollo se pasa `--dev-url=http://localhost:4200`; en producción se carga el build de Angular. */
 const devUrl = process.argv.find((a) => a.startsWith('--dev-url='))?.slice('--dev-url='.length);
 
+/** Ícono de ventana/barra de tareas (resources/ está en la raíz del proyecto). */
+const APP_ICON = path.join(__dirname, '..', '..', 'resources', process.platform === 'win32' ? 'icon.ico' : 'icon.png');
+
 let mainWindow: BrowserWindow | null = null;
+
+// En Windows agrupa la ventana en la barra de tareas con identidad (e ícono) propia, no la de Electron.
+if (process.platform === 'win32') app.setAppUserModelId('com.lenstom.editor');
+app.setName('LensTom');
 
 registerMediaSchemePrivileges();
 
@@ -19,7 +26,8 @@ function createWindow(): void {
     minWidth: 1000,
     minHeight: 640,
     backgroundColor: '#16171b',
-    title: 'TL Editor',
+    title: 'LensTom',
+    icon: APP_ICON,
     show: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),

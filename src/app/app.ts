@@ -35,7 +35,7 @@ export class App {
     // Título de la ventana con indicador de cambios sin guardar.
     effect(() => {
       const name = this.store.project().name;
-      document.title = `${this.store.dirty() ? '● ' : ''}${name} — TL Editor`;
+      document.title = `${this.store.dirty() ? '● ' : ''}${name} — LensTom`;
     });
   }
 
