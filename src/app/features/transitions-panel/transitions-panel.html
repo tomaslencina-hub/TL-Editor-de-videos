@@ -1,0 +1,21 @@
+<p class="hint">Arrastrá una transición al borde de un clip en la timeline. Sobre un corte entre dos clips hace un cruce; en un borde libre, una entrada o salida.</p>
+
+<div class="grid">
+  @for (t of types; track t) {
+    <div
+      class="card"
+      draggable="true"
+      (dragstart)="onDragStart($event, t)"
+      (dragend)="onDragEnd()"
+      (mouseenter)="onEnter(t)"
+      (mouseleave)="onLeave()"
+      [title]="labels[t]"
+    >
+      <div class="thumb">
+        <div class="layer a" [style]="styleFor(t, 'from')"><span>A</span></div>
+        <div class="layer b" [style]="styleFor(t, 'to')"><span>B</span></div>
+      </div>
+      <div class="name">{{ labels[t] }}</div>
+    </div>
+  }
+</div>

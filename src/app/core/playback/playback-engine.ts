@@ -2,13 +2,11 @@ import { InjectionToken } from '@angular/core';
 import type { Project } from '../../../../shared/model';
 
 /**
- * Superficies donde el motor dibuja/reproduce. La implementación v0.1 usa <video>/<audio>;
- * una futura implementación WebCodecs + WebGL usará el <canvas> y un AudioContext.
+ * Superficie donde el motor dibuja. El motor HTML (v0.x) crea sus <video> dentro de `container`;
+ * un futuro motor WebCodecs + WebGL dibujará en un <canvas> dentro del mismo contenedor.
  */
 export interface PlaybackSurface {
-  video: HTMLVideoElement;
-  audio: HTMLAudioElement;
-  canvas?: HTMLCanvasElement;
+  container: HTMLElement;
 }
 
 /**

@@ -9,13 +9,17 @@
 import {
   clipDuration,
   clipEnd,
+  nextTrackName,
   type Clip,
   type Id,
   type MediaSource,
   type Project,
   type ProjectSettings,
   type Track,
+  type TrackKind,
+  type Transition,
 } from '../../../../shared/model';
+import { ADJACENT_EPS } from '../../../../shared/transitions';
 
 export const EPS = 1e-6;
 
@@ -69,13 +73,13 @@ export function clearRange(clips: Clip[], start: number, end: number, excludeId?
       out.push(c);
       continue;
     }
-    // Parte izquierda que queda antes del rango.
+    // Parte izquierda que queda antes del rango (conserva la transición de entrada).
     if (cs < start - EPS) {
-      out.push({ ...c, outPoint: c.inPoint + (start - cs) });
+      out.push(withoutTransition({ ...c, outPoint: c.inPoint + (start - cs) }, 'out'));
     }
-    // Parte derecha que queda después del rango.
+    // Parte derecha que queda después del rango (conserva la transición de salida).
     if (ce > end + EPS) {
-      const right: Clip = { ...c, start: end, inPoint: c.inPoint + (end - cs) };
+      const right: Clip = withoutTransition({ ...c, start: end, inPoint: c.inPoint + (end - cs) }, 'in');
       // Si también hubo parte izquierda, la derecha es un clip nuevo.
       if (cs < start - EPS) right.id = newId('clip');
       out.push(right);
@@ -159,8 +163,8 @@ export function splitClip(project: Project, clipId: Id, t: number): Project {
   const minDur = 1 / project.settings.fps;
   if (t <= clip.start + minDur - EPS || t >= clipEnd(clip) - minDur + EPS) return project;
   const cut = clip.inPoint + (t - clip.start);
-  const left: Clip = { ...clip, outPoint: cut };
-  const right: Clip = { ...clip, id: newId('clip'), start: t, inPoint: cut };
+  const left: Clip = withoutTransition({ ...clip, outPoint: cut }, 'out');
+  const right: Clip = withoutTransition({ ...clip, id: newId('clip'), start: t, inPoint: cut }, 'in');
   return updateTrack(project, track.id, (tr) => ({
     ...tr,
     clips: sortClips(tr.clips.flatMap((c) => (c.id === clipId ? [left, right] : [c]))),
@@ -200,6 +204,91 @@ export function updateTrackProps(project: Project, trackId: Id, patch: Partial<P
 
 export function renameProject(project: Project, name: string): Project {
   return { ...project, name };
+}
+
+// ---------------------------------------------------------------------------- pistas
+
+/** Agrega una pista: las de video arriba de las de video existentes, las de audio al final. */
+export function addTrack(project: Project, kind: TrackKind, name = nextTrackName(project, kind)): { project: Project; track: Track } {
+  const track: Track = { id: newId('track'), kind, name, muted: false, locked: false, clips: [] };
+  const tracks = [...project.tracks];
+  if (kind === 'video') {
+    const firstVideo = tracks.findIndex((t) => t.kind === 'video');
+    tracks.splice(firstVideo < 0 ? 0 : firstVideo, 0, track);
+  } else {
+    tracks.push(track);
+  }
+  return { project: { ...project, tracks }, track };
+}
+
+/** Quita una pista (y sus clips). Siempre deja al menos una pista de cada tipo. */
+export function removeTrack(project: Project, trackId: Id): Project {
+  const track = project.tracks.find((t) => t.id === trackId);
+  if (!track || !canRemoveTrack(project, trackId)) return project;
+  return { ...project, tracks: project.tracks.filter((t) => t.id !== trackId) };
+}
+
+export function canRemoveTrack(project: Project, trackId: Id): boolean {
+  const track = project.tracks.find((t) => t.id === trackId);
+  return !!track && project.tracks.filter((t) => t.kind === track.kind).length > 1;
+}
+
+// ---------------------------------------------------------------------------- transiciones
+
+export type ClipEdge = 'in' | 'out';
+
+function withoutTransition(clip: Clip, edge: ClipEdge): Clip {
+  const key = edge === 'in' ? 'transitionIn' : 'transitionOut';
+  if (!clip[key]) return clip;
+  const copy = { ...clip };
+  delete copy[key];
+  return copy;
+}
+
+/** El clip pegado inmediatamente antes/después en la misma pista, si existe. */
+export function adjacentClip(track: Track, clip: Clip, side: 'prev' | 'next'): Clip | undefined {
+  return side === 'prev'
+    ? track.clips.find((c) => c.id !== clip.id && Math.abs(clipEnd(c) - clip.start) < ADJACENT_EPS)
+    : track.clips.find((c) => c.id !== clip.id && Math.abs(c.start - clipEnd(clip)) < ADJACENT_EPS);
+}
+
+/**
+ * Normaliza dónde se guarda una transición: la salida de un clip con otro pegado después
+ * es, en realidad, la entrada (cruzada) del siguiente.
+ */
+export function transitionTarget(project: Project, clipId: Id, edge: ClipEdge): { clipId: Id; edge: ClipEdge } | null {
+  const ref = findClip(project, clipId);
+  if (!ref) return null;
+  if (edge === 'out') {
+    const next = adjacentClip(ref.track, ref.clip, 'next');
+    if (next) return { clipId: next.id, edge: 'in' };
+  }
+  return { clipId, edge };
+}
+
+/** Duración máxima razonable para una transición en ese borde. */
+export function maxTransitionDuration(project: Project, clipId: Id, edge: ClipEdge): number {
+  const ref = findClip(project, clipId);
+  if (!ref) return 0;
+  const d = clipDuration(ref.clip);
+  if (edge === 'in') {
+    const prev = adjacentClip(ref.track, ref.clip, 'prev');
+    return prev ? Math.min(d, clipDuration(prev)) : d;
+  }
+  return d;
+}
+
+export function setTransition(project: Project, clipId: Id, edge: ClipEdge, transition: Transition | null): Project {
+  const ref = findClip(project, clipId);
+  if (!ref) return project;
+  const key = edge === 'in' ? 'transitionIn' : 'transitionOut';
+  const updated: Clip = transition
+    ? { ...ref.clip, [key]: { type: transition.type, duration: transition.duration } }
+    : withoutTransition(ref.clip, edge);
+  return updateTrack(project, ref.track.id, (t) => ({
+    ...t,
+    clips: t.clips.map((c) => (c.id === clipId ? updated : c)),
+  }));
 }
 
 /** Crea un clip a partir de un medio completo. */

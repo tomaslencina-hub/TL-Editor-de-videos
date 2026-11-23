@@ -104,6 +104,11 @@ export class EditorActionsService {
   }
 
   deleteSelected(): void {
+    const tr = this.store.selectedTransition();
+    if (tr) {
+      this.store.dispatch(Commands.setTransition(tr.clipId, tr.edge, null));
+      return;
+    }
     const id = this.store.selectedClipId();
     if (!id) return;
     const ref = findClip(this.store.project(), id);

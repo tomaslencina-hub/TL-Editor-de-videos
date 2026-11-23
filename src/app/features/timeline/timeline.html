@@ -1,8 +1,11 @@
 <div class="tl-toolbar">
   <button title="Dividir en el playhead (S / Ctrl+B)" (click)="actions.splitAtPlayhead()">✂ Dividir</button>
-  <button title="Borrar clip seleccionado (Supr)" [disabled]="!hasSelection()" (click)="actions.deleteSelected()">
+  <button title="Borrar la selección (Supr)" [disabled]="!hasSelection()" (click)="actions.deleteSelected()">
     🗑 Borrar
   </button>
+  <div class="sep"></div>
+  <button title="Agregar pista de video" (click)="addTrack('video')">＋ 🎞 Video</button>
+  <button title="Agregar pista de audio" (click)="addTrack('audio')">＋ ♪ Audio</button>
   <div class="sep"></div>
   <button
     class="icon"
@@ -12,6 +15,31 @@
   >
     🧲
   </button>
+
+  @if (selectedTransitionInfo(); as st) {
+    <div class="inspector">
+      <span class="inspector-title">✦ {{ st.label }}</span>
+      <select (change)="updateSelectedTransition({ type: $any($event.target).value })" title="Tipo de transición">
+        @for (t of transitionTypes; track t) {
+          <option [value]="t" [selected]="t === st.transition.type">{{ transitionLabels[t] }}</option>
+        }
+      </select>
+      <label class="duration">
+        <input
+          type="number"
+          min="0.1"
+          [max]="st.max"
+          step="0.1"
+          [value]="st.transition.duration.toFixed(2)"
+          (change)="updateSelectedTransition({ duration: +$any($event.target).value })"
+          title="Duración (segundos)"
+        />
+        s
+      </label>
+      <button class="icon" title="Quitar transición (Supr)" (click)="removeSelectedTransition()">✕</button>
+    </div>
+  }
+
   <div class="spacer"></div>
   <button class="icon" title="Alejar (-)" (click)="zoomAround(0.8)">－</button>
   <input
@@ -34,7 +62,26 @@
     <div class="headers-inner" [style.transform]="'translateY(' + -scrollTop() + 'px)'">
       @for (row of rows(); track row.track.id) {
         <div class="track-header" [class]="row.track.kind" [style.height.px]="TRACK_HEIGHT[row.track.kind]">
-          <span class="track-name">{{ row.track.kind === 'video' ? '🎞' : '♪' }} {{ row.track.name }}</span>
+          @if (editingTrackId() === row.track.id) {
+            <input
+              class="track-name-input"
+              type="text"
+              appAutofocus
+              maxlength="40"
+              [value]="row.track.name"
+              (keydown.enter)="commitRename(row.track, $any($event.target).value)"
+              (keydown.escape)="editingTrackId.set(null)"
+              (blur)="commitRename(row.track, $any($event.target).value)"
+            />
+          } @else {
+            <span
+              class="track-name"
+              (dblclick)="editingTrackId.set(row.track.id)"
+              [title]="row.track.name + ' — doble clic para renombrar'"
+            >
+              {{ row.track.kind === 'video' ? '🎞' : '♪' }} {{ row.track.name }}
+            </span>
+          }
           <div class="track-buttons">
             <button
               class="icon small"
@@ -51,6 +98,15 @@
               [title]="row.track.locked ? 'Desbloquear pista' : 'Bloquear pista'"
             >
               {{ row.track.locked ? '🔒' : '🔓' }}
+            </button>
+            <button class="icon small" title="Renombrar pista" (click)="editingTrackId.set(row.track.id)">✎</button>
+            <button
+              class="icon small"
+              [disabled]="!row.removable"
+              [title]="row.removable ? 'Quitar pista' : 'Tiene que quedar al menos una pista de este tipo'"
+              (click)="removeTrack(row.track)"
+            >
+              ✕
             </button>
           </div>
         </div>
@@ -103,6 +159,7 @@
               [class.dragging]="preview()?.clipId === clip.id"
               [class.missing]="assets?.missing"
               [class.muted]="row.track.muted"
+              [attr.data-clip-id]="clip.id"
               [style.left.px]="clip.start * view.pps()"
               [style.width.px]="width"
               [style.background-image]="row.track.kind === 'video' && assets?.thumbnail ? 'url(&quot;' + assets!.thumbnail + '&quot;)' : null"
@@ -126,9 +183,28 @@
             </div>
           }
 
+          @for (b of row.badges; track b.key) {
+            <div
+              class="transition-badge"
+              [class]="b.kind"
+              [class.selected]="isBadgeSelected(b)"
+              [style.left.px]="b.start * view.pps()"
+              [style.width.px]="(b.end - b.start) * view.pps()"
+              [title]="transitionLabels[b.type] + ' · ' + (b.end - b.start).toFixed(2) + ' s'"
+              (pointerdown)="onBadgePointerDown($event, b)"
+            >
+              <span>✦</span>
+            </div>
+          }
+
           @if (dropGhost(); as g) {
             @if (g.trackId === row.track.id) {
-              <div class="drop-ghost" [style.left.px]="g.start * view.pps()" [style.width.px]="g.duration * view.pps()"></div>
+              <div
+                class="drop-ghost"
+                [class.transition]="g.kind === 'transition'"
+                [style.left.px]="g.start * view.pps()"
+                [style.width.px]="g.duration * view.pps()"
+              ></div>
             }
           }
         </div>

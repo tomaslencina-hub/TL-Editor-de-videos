@@ -5,7 +5,7 @@ import { PlaybackService } from './core/playback/playback.service';
 import { ProjectStore } from './core/state/project-store';
 import { TimelineViewService } from './features/timeline/timeline-view.service';
 import { ExportDialog } from './features/export-dialog/export-dialog';
-import { MediaPanel } from './features/media-panel/media-panel';
+import { Library } from './features/library/library';
 import { Preview } from './features/preview/preview';
 import { Timeline } from './features/timeline/timeline';
 import { Toasts } from './features/toasts/toasts';
@@ -13,7 +13,7 @@ import { Toolbar } from './features/toolbar/toolbar';
 
 @Component({
   selector: 'app-root',
-  imports: [Toolbar, MediaPanel, Preview, Timeline, ExportDialog, Toasts],
+  imports: [Toolbar, Library, Preview, Timeline, ExportDialog, Toasts],
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
@@ -75,7 +75,8 @@ export class App {
     } else if (key === '-') {
       this.view.zoomBy(0.8);
     } else if (key === 'escape') {
-      this.store.selectedClipId.set(null);
+      this.store.selectClip(null);
+      this.store.selectTransition(null);
     } else {
       return;
     }

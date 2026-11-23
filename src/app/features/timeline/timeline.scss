@@ -23,6 +23,37 @@
   .zoom {
     width: 160px;
   }
+
+  .inspector {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 8px;
+    padding: 2px 6px 2px 10px;
+    border-radius: var(--radius);
+    background: rgb(178 58 214 / 18%);
+    border: 1px solid rgb(178 58 214 / 50%);
+
+    .inspector-title {
+      color: #e3b6ff;
+      white-space: nowrap;
+    }
+    .duration {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--text-1);
+      input {
+        width: 64px;
+        font: inherit;
+        color: var(--text-0);
+        background: var(--bg-2);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 3px 6px;
+      }
+    }
+  }
 }
 
 .tl-body {
@@ -57,6 +88,15 @@
   .track-name {
     font-weight: 600;
     color: var(--text-1);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: text;
+  }
+  .track-name-input {
+    padding: 1px 6px;
+    font-weight: 600;
+    width: 100%;
   }
   .track-buttons {
     display: flex;
@@ -216,6 +256,41 @@
   border-radius: 5px;
   pointer-events: none;
   z-index: 4;
+
+  &.transition {
+    border-color: #c77dff;
+    background: rgb(199 125 255 / 30%);
+    min-width: 8px;
+  }
+}
+
+.transition-badge {
+  position: absolute;
+  top: 50%;
+  height: 22px;
+  margin-top: -11px;
+  min-width: 10px;
+  z-index: 3;
+  border-radius: 11px;
+  border: 1px solid rgb(255 255 255 / 60%);
+  background: linear-gradient(90deg, rgb(47 111 179 / 85%), rgb(178 58 214 / 85%));
+  box-shadow: 0 2px 8px rgb(0 0 0 / 50%);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  font-size: 11px;
+  color: #fff;
+  overflow: hidden;
+
+  &.in {
+    background: linear-gradient(90deg, rgb(0 0 0 / 80%), rgb(178 58 214 / 85%));
+  }
+  &.out {
+    background: linear-gradient(90deg, rgb(47 111 179 / 85%), rgb(0 0 0 / 80%));
+  }
+  &.selected {
+    border: 2px solid var(--snap);
+  }
 }
 
 .playhead,

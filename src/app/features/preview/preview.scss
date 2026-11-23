@@ -17,14 +17,9 @@
 .frame {
   box-shadow: 0 0 0 1px var(--border);
   overflow: hidden;
-
-  video {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    display: block;
-    visibility: hidden;
-  }
+  position: relative;
+  /* Los <video> de cada pista los crea el motor de reproducción. */
+  isolation: isolate;
 }
 
 .transport {

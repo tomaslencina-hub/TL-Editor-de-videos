@@ -1,13 +1,11 @@
 <div class="stage" #stage>
   <div
     class="frame"
+    #frame
     [style.width.px]="frameSize().w"
     [style.height.px]="frameSize().h"
     [style.background]="store.settings().backgroundColor"
-  >
-    <video #video playsinline disablepictureinpicture></video>
-  </div>
-  <audio #audio></audio>
+  ></div>
 </div>
 
 <div class="transport">

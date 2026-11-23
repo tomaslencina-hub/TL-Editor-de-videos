@@ -1,4 +1,4 @@
-import type { Clip, Id, MediaSource, Project, ProjectSettings, Track } from '../../../../shared/model';
+import type { Clip, Id, MediaSource, Project, ProjectSettings, Track, TrackKind, Transition } from '../../../../shared/model';
 import * as ops from '../timeline/timeline-ops';
 
 /**
@@ -43,4 +43,14 @@ export const Commands = {
     cmd('Cambiar pista', (p) => ops.updateTrackProps(p, trackId, patch)),
 
   renameProject: (name: string) => cmd('Renombrar proyecto', (p) => ops.renameProject(p, name)),
+
+  addTrack: (kind: TrackKind) =>
+    cmd(kind === 'video' ? 'Agregar pista de video' : 'Agregar pista de audio', (p) => ops.addTrack(p, kind).project),
+
+  removeTrack: (trackId: Id) => cmd('Quitar pista', (p) => ops.removeTrack(p, trackId)),
+
+  renameTrack: (trackId: Id, name: string) => cmd('Renombrar pista', (p) => ops.updateTrackProps(p, trackId, { name })),
+
+  setTransition: (clipId: Id, edge: ops.ClipEdge, transition: Transition | null) =>
+    cmd(transition ? 'Aplicar transición' : 'Quitar transición', (p) => ops.setTransition(p, clipId, edge, transition)),
 };

@@ -22,8 +22,7 @@ export class Preview implements AfterViewInit, OnDestroy {
   protected readonly playback = inject(PlaybackService);
 
   private readonly stage = viewChild.required<ElementRef<HTMLDivElement>>('stage');
-  private readonly video = viewChild.required<ElementRef<HTMLVideoElement>>('video');
-  private readonly audio = viewChild.required<ElementRef<HTMLAudioElement>>('audio');
+  private readonly frame = viewChild.required<ElementRef<HTMLDivElement>>('frame');
 
   private readonly stageSize = signal({ w: 0, h: 0 });
   private resizeObserver?: ResizeObserver;
@@ -45,7 +44,7 @@ export class Preview implements AfterViewInit, OnDestroy {
       this.stageSize.set({ w: width, h: height });
     });
     this.resizeObserver.observe(stage);
-    this.playback.attach({ video: this.video().nativeElement, audio: this.audio().nativeElement });
+    this.playback.attach({ container: this.frame().nativeElement });
   }
 
   ngOnDestroy(): void {

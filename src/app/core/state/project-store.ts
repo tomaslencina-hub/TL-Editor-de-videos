@@ -24,8 +24,19 @@ export class ProjectStore {
   readonly project = this._project.asReadonly();
   readonly filePath = signal<string | null>(null);
 
-  /** Estado de UI (no forma parte del modelo ni del historial). */
+  /** Estado de UI (no forma parte del modelo ni del historial). Clip y transición son excluyentes. */
   readonly selectedClipId = signal<Id | null>(null);
+  readonly selectedTransition = signal<{ clipId: Id; edge: 'in' | 'out' } | null>(null);
+
+  selectClip(id: Id | null): void {
+    this.selectedClipId.set(id);
+    if (id) this.selectedTransition.set(null);
+  }
+
+  selectTransition(sel: { clipId: Id; edge: 'in' | 'out' } | null): void {
+    this.selectedTransition.set(sel);
+    if (sel) this.selectedClipId.set(null);
+  }
 
   readonly settings = computed(() => this._project().settings);
   readonly duration = computed(() => projectDuration(this._project()));
@@ -72,6 +83,7 @@ export class ProjectStore {
     this._redo.set([]);
     this.filePath.set(filePath);
     this.selectedClipId.set(null);
+    this.selectedTransition.set(null);
   }
 
   markSaved(filePath: string): void {
@@ -80,9 +92,13 @@ export class ProjectStore {
   }
 
   private pruneSelection(): void {
+    const findClip = (id: Id) => this._project().tracks.flatMap((t) => t.clips).find((c) => c.id === id);
     const id = this.selectedClipId();
-    if (id && !this._project().tracks.some((t) => t.clips.some((c) => c.id === id))) {
-      this.selectedClipId.set(null);
+    if (id && !findClip(id)) this.selectedClipId.set(null);
+    const tr = this.selectedTransition();
+    if (tr) {
+      const clip = findClip(tr.clipId);
+      if (!clip || !(tr.edge === 'in' ? clip.transitionIn : clip.transitionOut)) this.selectedTransition.set(null);
     }
   }
 }

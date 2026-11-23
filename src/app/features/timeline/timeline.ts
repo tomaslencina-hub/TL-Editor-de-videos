@@ -12,7 +12,16 @@ import {
   viewChild,
   type AfterViewInit,
 } from '@angular/core';
-import { clipDuration, clipEnd, type Clip, type Id, type MediaSource, type Track } from '../../../../shared/model';
+import { clipDuration, clipEnd, type Clip, type Id, type MediaSource, type Track, type TrackKind } from '../../../../shared/model';
+import {
+  DEFAULT_TRANSITION_DURATION,
+  MIN_TRANSITION_DURATION,
+  resolveTransitions,
+  TRANSITION_LABELS,
+  TRANSITION_TYPES,
+  type ResolvedTransition,
+  type TransitionType,
+} from '../../../../shared/transitions';
 import { Commands } from '../../core/commands/command';
 import { EditorActionsService } from '../../core/editor-actions.service';
 import { MediaLibraryService } from '../../core/media/media-library.service';
@@ -20,8 +29,22 @@ import { PlaybackService } from '../../core/playback/playback.service';
 import { ProjectStore } from '../../core/state/project-store';
 import { collectSnapPoints, snap } from '../../core/timeline/snap';
 import { roundToFrame } from '../../core/timeline/time';
-import { clipFromMedia, findClip, findMedia, isCompatible, trimLimits, type TrimEdge, type TrimLimits } from '../../core/timeline/timeline-ops';
-import { MEDIA_DRAG_TYPE, MediaDragService } from '../../core/ui/media-drag.service';
+import {
+  adjacentClip,
+  canRemoveTrack,
+  clipFromMedia,
+  findClip,
+  findMedia,
+  isCompatible,
+  maxTransitionDuration,
+  transitionTarget,
+  trimLimits,
+  type ClipEdge,
+  type TrimEdge,
+  type TrimLimits,
+} from '../../core/timeline/timeline-ops';
+import { AutofocusDirective } from '../../core/ui/autofocus.directive';
+import { MEDIA_DRAG_TYPE, MediaDragService, TRANSITION_DRAG_TYPE } from '../../core/ui/media-drag.service';
 import { TimelineRuler } from './ruler';
 import { MAX_PPS, MIN_PPS, TimelineViewService } from './timeline-view.service';
 import { Waveform } from './waveform';
@@ -49,11 +72,27 @@ interface DropGhost {
   trackId: Id;
   start: number;
   duration: number;
+  kind: 'media' | 'transition';
+}
+
+/** Marca visual de una transición en la timeline. */
+interface TransitionBadge {
+  key: string;
+  start: number;
+  end: number;
+  kind: ResolvedTransition['kind'];
+  type: TransitionType;
+  target: { clipId: Id; edge: ClipEdge };
+}
+
+function badgeOf(t: ResolvedTransition): TransitionBadge {
+  const target = t.kind === 'out' ? { clipId: t.from.id, edge: 'out' as const } : { clipId: t.to.id, edge: 'in' as const };
+  return { key: `${target.clipId}:${target.edge}`, start: t.start, end: t.end, kind: t.kind, type: t.type, target };
 }
 
 @Component({
   selector: 'app-timeline',
-  imports: [TimelineRuler, Waveform],
+  imports: [TimelineRuler, Waveform, AutofocusDirective],
   templateUrl: './timeline.html',
   styleUrl: './timeline.scss',
 })
@@ -92,7 +131,7 @@ export class Timeline implements AfterViewInit, OnDestroy {
 
   protected readonly playheadX = computed(() => this.playback.currentTime() * this.view.pps());
 
-  /** Pistas con sus clips, aplicando la previsualización del arrastre en curso. */
+  /** Pistas con sus clips (aplicando la previsualización del arrastre en curso) y sus transiciones. */
   protected readonly rows = computed(() => {
     const p = this.preview();
     return this.store.project().tracks.map((track) => {
@@ -104,11 +143,37 @@ export class Timeline implements AfterViewInit, OnDestroy {
           if (original) clips = [...clips, { ...original, start: p.start, inPoint: p.inPoint, outPoint: p.outPoint }];
         }
       }
-      return { track, clips };
+      // Durante un arrastre las transiciones se recalculan sobre la posición provisional.
+      const badges = resolveTransitions(p ? { ...track, clips } : track).map(badgeOf);
+      return { track, clips, badges, removable: canRemoveTrack(this.store.project(), track.id) };
     });
   });
 
-  protected readonly hasSelection = computed(() => this.store.selectedClipId() !== null);
+  protected readonly hasSelection = computed(
+    () => this.store.selectedClipId() !== null || this.store.selectedTransition() !== null,
+  );
+
+  // ---- Edición de nombre de pista ----
+  protected readonly editingTrackId = signal<Id | null>(null);
+
+  // ---- Transición seleccionada (inspector) ----
+  protected readonly transitionTypes = TRANSITION_TYPES;
+  protected readonly transitionLabels = TRANSITION_LABELS;
+  protected readonly selectedTransitionInfo = computed(() => {
+    const sel = this.store.selectedTransition();
+    if (!sel) return null;
+    const project = this.store.project();
+    const ref = findClip(project, sel.clipId);
+    const transition = sel.edge === 'in' ? ref?.clip.transitionIn : ref?.clip.transitionOut;
+    if (!ref || !transition) return null;
+    const cross = sel.edge === 'in' && !!adjacentClip(ref.track, ref.clip, 'prev');
+    return {
+      ...sel,
+      transition,
+      max: maxTransitionDuration(project, sel.clipId, sel.edge),
+      label: cross ? 'Transición (cruce)' : sel.edge === 'in' ? 'Transición (entrada)' : 'Transición (salida)',
+    };
+  });
 
   constructor() {
     // Durante la reproducción, la vista sigue al playhead.
@@ -229,7 +294,8 @@ export class Timeline implements AfterViewInit, OnDestroy {
   protected onTrackPointerDown(e: PointerEvent): void {
     // Clic en zona vacía de una pista: deselecciona y mueve el playhead.
     if (e.button !== 0) return;
-    this.store.selectedClipId.set(null);
+    this.store.selectClip(null);
+    this.store.selectTransition(null);
     this.beginCapture(e);
     this.interaction = { kind: 'scrub' };
     this.playback.seek(this.scrubTime(e));
@@ -250,7 +316,7 @@ export class Timeline implements AfterViewInit, OnDestroy {
   protected onClipPointerDown(e: PointerEvent, clip: Clip, track: Track, mode: 'move' | TrimEdge): void {
     if (e.button !== 0) return;
     e.stopPropagation();
-    this.store.selectedClipId.set(clip.id);
+    this.store.selectClip(clip.id);
     if (track.locked) return;
     this.beginCapture(e);
 
@@ -353,6 +419,10 @@ export class Timeline implements AfterViewInit, OnDestroy {
   // ------------------------------------------------------------------ drop desde el panel de medios
 
   protected onTrackDragOver(e: DragEvent, track: Track): void {
+    if (this.mediaDrag.transition() && e.dataTransfer?.types.includes(TRANSITION_DRAG_TYPE)) {
+      this.onTransitionDragOver(e, track);
+      return;
+    }
     const media = this.mediaDrag.current();
     if (!media || !e.dataTransfer?.types.includes(MEDIA_DRAG_TYPE)) return;
     if (track.locked || !isCompatible(media, track)) {
@@ -371,7 +441,7 @@ export class Timeline implements AfterViewInit, OnDestroy {
       this.snapLine.set(s.point);
     }
     if (!snapped) start = roundToFrame(start, this.store.settings().fps);
-    this.dropGhost.set({ trackId: track.id, start: Math.max(0, start), duration: media.duration });
+    this.dropGhost.set({ trackId: track.id, start: Math.max(0, start), duration: media.duration, kind: 'media' });
   }
 
   protected onTrackDragLeave(e: DragEvent): void {
@@ -385,6 +455,20 @@ export class Timeline implements AfterViewInit, OnDestroy {
     const ghost = this.dropGhost();
     this.dropGhost.set(null);
     this.snapLine.set(null);
+    const transitionType = e.dataTransfer?.getData(TRANSITION_DRAG_TYPE);
+    if (transitionType) {
+      e.preventDefault();
+      const drop = this.transitionDrop(e, track);
+      if (!drop) return;
+      this.store.dispatch(
+        Commands.setTransition(drop.target.clipId, drop.target.edge, {
+          type: transitionType as TransitionType,
+          duration: drop.duration,
+        }),
+      );
+      this.store.selectTransition(drop.target);
+      return;
+    }
     const id = e.dataTransfer?.getData(MEDIA_DRAG_TYPE);
     if (!id || !ghost || ghost.trackId !== track.id) return;
     e.preventDefault();
@@ -392,10 +476,97 @@ export class Timeline implements AfterViewInit, OnDestroy {
     if (!media) return;
     const clip = clipFromMedia(media, ghost.start);
     this.store.dispatch(Commands.insertClip(track.id, clip));
-    this.store.selectedClipId.set(clip.id);
+    this.store.selectClip(clip.id);
+  }
+
+  // ------------------------------------------------------------------ transiciones
+
+  /** Borde de clip bajo el puntero: mitad izquierda = inicio, mitad derecha = final. */
+  private transitionDrop(e: DragEvent, track: Track): { target: { clipId: Id; edge: ClipEdge }; duration: number; start: number; end: number } | null {
+    if (track.locked) return null;
+    const clipEl = (e.target as Element | null)?.closest<HTMLElement>('[data-clip-id]');
+    const clipId = clipEl?.dataset['clipId'];
+    if (!clipEl || !clipId) return null;
+    const rect = clipEl.getBoundingClientRect();
+    const edge: ClipEdge = e.clientX < rect.left + rect.width / 2 ? 'in' : 'out';
+    const project = this.store.project();
+    const target = transitionTarget(project, clipId, edge);
+    if (!target) return null;
+    const max = maxTransitionDuration(project, target.clipId, target.edge);
+    const duration = Math.min(DEFAULT_TRANSITION_DURATION, max);
+    if (duration < MIN_TRANSITION_DURATION) return null;
+    const ref = findClip(project, target.clipId)!;
+    const cross = target.edge === 'in' && !!adjacentClip(ref.track, ref.clip, 'prev');
+    const [start, end] = cross
+      ? [ref.clip.start - duration / 2, ref.clip.start + duration / 2]
+      : target.edge === 'in'
+        ? [ref.clip.start, ref.clip.start + duration]
+        : [clipEnd(ref.clip) - duration, clipEnd(ref.clip)];
+    return { target, duration, start, end };
+  }
+
+  private onTransitionDragOver(e: DragEvent, track: Track): void {
+    const drop = this.transitionDrop(e, track);
+    if (!drop) {
+      this.dropGhost.set(null);
+      return;
+    }
+    e.preventDefault();
+    e.dataTransfer!.dropEffect = 'copy';
+    this.dropGhost.set({ trackId: track.id, start: drop.start, duration: drop.end - drop.start, kind: 'transition' });
+  }
+
+  protected onBadgePointerDown(e: PointerEvent, badge: TransitionBadge): void {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    this.store.selectTransition(badge.target);
+  }
+
+  protected isBadgeSelected(badge: TransitionBadge): boolean {
+    const sel = this.store.selectedTransition();
+    return !!sel && sel.clipId === badge.target.clipId && sel.edge === badge.target.edge;
+  }
+
+  protected updateSelectedTransition(patch: { type?: string; duration?: number }): void {
+    const info = this.selectedTransitionInfo();
+    if (!info) return;
+    const duration = patch.duration ?? info.transition.duration;
+    if (!Number.isFinite(duration) || duration < MIN_TRANSITION_DURATION) return;
+    this.store.dispatch(
+      Commands.setTransition(info.clipId, info.edge, {
+        type: (patch.type as TransitionType) ?? info.transition.type,
+        duration: Math.min(duration, info.max),
+      }),
+    );
+  }
+
+  protected removeSelectedTransition(): void {
+    const info = this.selectedTransitionInfo();
+    if (info) this.store.dispatch(Commands.setTransition(info.clipId, info.edge, null));
   }
 
   // ------------------------------------------------------------------ pistas
+
+  protected addTrack(kind: TrackKind): void {
+    const before = new Set(this.store.project().tracks.map((t) => t.id));
+    this.store.dispatch(Commands.addTrack(kind));
+    // La pista nueva queda lista para renombrar.
+    const created = this.store.project().tracks.find((t) => !before.has(t.id));
+    if (created) this.editingTrackId.set(created.id);
+  }
+
+  protected removeTrack(track: Track): void {
+    if (!canRemoveTrack(this.store.project(), track.id)) return;
+    if (track.clips.length && !confirm(`La pista "${track.name}" tiene ${track.clips.length} clip(s). ¿Quitarla igual?`)) return;
+    this.store.dispatch(Commands.removeTrack(track.id));
+  }
+
+  protected commitRename(track: Track, value: string): void {
+    if (this.editingTrackId() !== track.id) return;
+    this.editingTrackId.set(null);
+    const name = value.trim();
+    if (name && name !== track.name) this.store.dispatch(Commands.renameTrack(track.id, name));
+  }
 
   protected toggleMute(track: Track): void {
     this.store.dispatch(Commands.updateTrack(track.id, { muted: !track.muted }));
