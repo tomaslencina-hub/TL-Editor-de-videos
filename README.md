@@ -21,24 +21,30 @@ Editor de video de escritorio estilo Filmora: **Electron + Angular 22 (standalon
 
 ## Uso rápido
 
-1. **Importar**: botón *Importar* (Ctrl+I) o arrastrar archivos desde el Explorador a la ventana.
-   Con el proyecto vacío, la resolución y los fps se adaptan al primer video importado.
-2. **Timeline**: arrastrar medios desde el panel a la pista de video o de audio.
-   - Mover: arrastrar el clip. Recortar: arrastrar sus bordes. Dividir: `S` o `Ctrl+B`. Borrar: `Supr`.
-   - Imantado a bordes y playhead (botón 🧲; mantener `Alt` lo desactiva temporalmente).
-   - Zoom: `Ctrl + rueda`, `+`/`-`, slider o *Ajustar*. Clic/arrastre en la regla para mover el playhead.
-   - Superposición: al soltar o mover un clip sobre otro, **sobrescribe** (recorta/divide lo que haya debajo).
-   - **Pistas**: *＋ Video* / *＋ Audio* agregan pistas (la nueva queda lista para nombrar). Doble clic o ✎ en el
-     nombre para renombrar (Enter confirma, Esc cancela); ✕ quita la pista (siempre queda al menos una de cada tipo).
-     Las pistas de video de arriba tapan a las de abajo; donde no hay clip se ve lo de abajo. El audio de todas se mezcla.
-   - **Transiciones**: pestaña *Transiciones* del panel izquierdo (pasá el mouse para ver la animación).
-     Arrastrala al borde de un clip: sobre un corte entre dos clips pegados hace un **cruce** centrado en el corte;
-     en un borde libre hace una **entrada/salida** sobre lo que haya debajo. Clic en la marca ✦ para cambiar
-     tipo o duración en la barra de la timeline; `Supr` la quita. El audio hace fundido cruzado automáticamente.
-3. **Vista previa**: `Espacio` play/pausa, `←`/`→` frame a frame (`Shift` = 10 frames), `Inicio`/`Fin`.
-4. **Deshacer/Rehacer**: `Ctrl+Z` / `Ctrl+Y` (o `Ctrl+Shift+Z`).
-5. **Proyecto**: `Ctrl+N` nuevo, `Ctrl+O` abrir, `Ctrl+S` guardar, `Ctrl+Shift+S` guardar como (`.vproj`, JSON).
-6. **Exportar**: `Ctrl+E` → MP4 H.264 (CRF 20) + AAC 192k con la resolución/fps del proyecto. Barra de progreso y cancelar.
+1. **Importar**: *Importar* (Ctrl+I) o arrastrar archivos a la ventana. Los formatos que el motor no decodifica
+   (ProRes, AVI viejos…) se convierten solos a una copia intermedia H.264 para editar.
+2. **Timeline**: arrastrá medios a una pista. Mover, recortar desde los bordes, dividir (`S`/`Ctrl+B`), borrar (`Supr`),
+   imantado (🧲, `Alt` lo desactiva), zoom (`Ctrl`+rueda). Pistas: *＋ Video*/*＋ Audio*, doble clic para renombrar, ✕ para quitar.
+3. **Propiedades** (se abre al seleccionar un clip, o con clic sobre él en la vista previa):
+   - Transformación: posición, escala, rotación, opacidad — también con las manijas sobre la vista previa
+     (Shift = rotación de a 15°; se imanta al centro). Así se arma un picture-in-picture.
+   - Color: brillo, contraste, saturación, temperatura.
+   - **Keyframes**: botón ◆ en cada propiedad (agrega/quita en el playhead); con keyframes, editar el valor crea uno nuevo.
+   - Velocidad (0,25×–4× o personalizada, sin cambiar el tono) y Audio (volumen 0–200 % con keyframes, fundidos,
+     silenciar, *Separar audio*).
+4. **Texto**: pestaña *Texto* → elegí un estilo; se agrega en el playhead. Editalo en *Propiedades*
+   (fuente, tamaño, color, contorno, sombra, fondo, animaciones de entrada/salida).
+5. **Transiciones**: pestaña *Transiciones* (18 tipos) → arrastrá al borde de un clip. Clic en la marca ✦ para editarla.
+6. **Atajos**: `Espacio` play/pausa, `←`/`→` cuadro a cuadro, `Ctrl+Z`/`Ctrl+Y`, `Ctrl+S` guardar, `Ctrl+E` exportar.
+
+## Motor de render
+
+La vista previa y la exportación usan **el mismo compositor WebGL2** (`src/app/core/render/`): capas por pista,
+transformaciones, color, texto y transiciones (shaders con las fórmulas de `xfade`). Lo que se ve es lo que se exporta.
+
+- **Vista previa**: `<video>` ocultos como fuente de cuadros → compositor → canvas; audio por Web Audio.
+- **Exportación**: Mediabunny decodifica cuadros exactos con WebCodecs → compositor → H.264 por WebCodecs
+  (en el renderer) → el proceso main mezcla el audio con FFmpeg y lo multiplexa sin recodificar el video.
 
 ## Arquitectura
 
@@ -87,17 +93,10 @@ Un motor WebCodecs implementaría la misma interfaz dibujando en el `canvas` de 
 
 ## Limitaciones conocidas
 
-- Las pistas no se pueden reordenar todavía (las de video nuevas se agregan arriba de todo).
-- Los clips de las pistas superiores ocupan todo el cuadro (letterbox opaco); el picture-in-picture llegará con transformaciones.
-- Transiciones: la vista previa las emula con CSS. Barridos, deslizamientos, círculos y fundidos coinciden con la exportación;
-  *Fundido a negro* y *Zoom* son aproximaciones, y los círculos tienen un borde levemente distinto (curva vs. lineal).
-- Vista previa con `<video>`/`<audio>`: pequeños cortes al pasar entre archivos distintos (sin precarga),
-  sincronía aproximada (±250 ms antes de corregir), algunos códecs que Chromium no decodifica (p. ej. ProRes, HEVC
-  según el equipo) no se ven en la vista previa aunque sí se exportan.
-- Los videos con audio se reproducen/exportan con su audio embebido en la pista de video (no hay audio "desvinculado").
-  Silenciar la pista de video silencia ese audio.
-- Selección de un solo clip; sin copiar/pegar ni ripple delete.
-- Sin auto-scroll al arrastrar cerca del borde de la timeline.
-- Imágenes fijas no soportadas.
-- Las rutas del `.vproj` son absolutas.
-- Sin empaquetado/instalador todavía (electron-builder queda para otra etapa).
+- Las pistas no se pueden reordenar todavía.
+- Sin imágenes fijas/stickers, LUTs, recorte (crop) ni máscaras todavía.
+- Edición: selección de un solo clip; sin copiar/pegar, ripple delete ni marcadores.
+- La vista previa usa `<video>`: pequeños cortes al cambiar de archivo y sincronía aproximada (±250 ms);
+  la exportación sí es exacta cuadro a cuadro.
+- Las rutas del `.vproj` son absolutas. Sin instalador todavía.
+- Mediabunny tiene licencia MPL-2.0: si se modifica su código, esos archivos deben publicarse (usarla tal cual no obliga a nada).
