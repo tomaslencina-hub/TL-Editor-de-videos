@@ -1,6 +1,6 @@
 @if (sel.clip(); as clip) {
   <header>
-    <div class="clip-name" [title]="sel.media()?.path ?? ''">{{ sel.media()?.name ?? 'Clip' }}</div>
+    <div class="clip-name" [title]="sel.media()?.path ?? ''">{{ info()?.name }}</div>
     <div class="clip-meta mono">{{ info()?.start }} · {{ info()?.duration }}</div>
     <div class="key-nav">
       <button class="icon small" [disabled]="prevKey() === null" (click)="goToKey(prevKey())" title="Keyframe anterior">◀◆</button>
@@ -10,6 +10,102 @@
 
   @if (!sel.playheadInside()) {
     <p class="hint">Mové el playhead sobre el clip para agregar keyframes.</p>
+  }
+
+  @if (text(); as tx) {
+    <section class="text-section">
+      <div class="section-title"><span>Texto</span></div>
+      <textarea
+        rows="3"
+        [value]="tx.text"
+        (input)="setText({ text: $any($event.target).value }, 'text-content')"
+        placeholder="Escribí el texto"
+      ></textarea>
+      <div class="line">
+        <select (change)="setText({ fontFamily: $any($event.target).value })" title="Fuente">
+          @for (f of fonts; track f) {
+            <option [value]="f" [selected]="f === tx.fontFamily" [style.font-family]="f">{{ f }}</option>
+          }
+        </select>
+        <input
+          type="number"
+          class="num"
+          min="8"
+          max="600"
+          [value]="tx.fontSize"
+          (input)="setText({ fontSize: +$any($event.target).value || tx.fontSize }, 'text-size')"
+          title="Tamaño"
+        />
+      </div>
+      <div class="line">
+        <button class="icon tog" [class.active]="tx.bold" (click)="setText({ bold: !tx.bold })" title="Negrita"><b>B</b></button>
+        <button class="icon tog" [class.active]="tx.italic" (click)="setText({ italic: !tx.italic })" title="Cursiva"><i>I</i></button>
+        <button class="icon tog" [class.active]="tx.align === 'left'" (click)="setText({ align: 'left' })" title="Alinear a la izquierda">⇤</button>
+        <button class="icon tog" [class.active]="tx.align === 'center'" (click)="setText({ align: 'center' })" title="Centrar">≡</button>
+        <button class="icon tog" [class.active]="tx.align === 'right'" (click)="setText({ align: 'right' })" title="Alinear a la derecha">⇥</button>
+        <input type="color" [value]="tx.color" (input)="setText({ color: $any($event.target).value }, 'text-color')" title="Color" />
+      </div>
+      <div class="line">
+        <label class="chk">
+          <input type="checkbox" [checked]="tx.stroke.enabled" (change)="setNested('stroke', { enabled: $any($event.target).checked }, 'stroke')" />
+          Contorno
+        </label>
+        <input type="color" [value]="tx.stroke.color" (input)="setNested('stroke', { color: $any($event.target).value }, 'stroke-color')" />
+        <input type="range" min="1" max="30" [value]="tx.stroke.width" (input)="setNested('stroke', { width: +$any($event.target).value }, 'stroke-width')" title="Grosor" />
+      </div>
+      <div class="line">
+        <label class="chk">
+          <input type="checkbox" [checked]="tx.shadow.enabled" (change)="setNested('shadow', { enabled: $any($event.target).checked }, 'shadow')" />
+          Sombra
+        </label>
+        <input type="color" [value]="tx.shadow.color" (input)="setNested('shadow', { color: $any($event.target).value }, 'shadow-color')" />
+        <input type="range" min="0" max="60" [value]="tx.shadow.blur" (input)="setNested('shadow', { blur: +$any($event.target).value }, 'shadow-blur')" title="Desenfoque" />
+      </div>
+      <div class="line">
+        <label class="chk">
+          <input type="checkbox" [checked]="tx.background.enabled" (change)="setNested('background', { enabled: $any($event.target).checked }, 'bg')" />
+          Fondo
+        </label>
+        <input type="color" [value]="tx.background.color" (input)="setNested('background', { color: $any($event.target).value }, 'bg-color')" />
+        <input
+          type="range"
+          min="0"
+          max="100"
+          [value]="tx.background.opacity * 100"
+          (input)="setNested('background', { opacity: +$any($event.target).value / 100 }, 'bg-opacity')"
+          title="Opacidad"
+        />
+      </div>
+      <div class="line anim">
+        <label>Entrada</label>
+        <select (change)="setText({ animIn: $any($event.target).value })">
+          @for (a of animations; track a) {
+            <option [value]="a" [selected]="a === tx.animIn">{{ animationLabels[a] }}</option>
+          }
+        </select>
+      </div>
+      <div class="line anim">
+        <label>Salida</label>
+        <select (change)="setText({ animOut: $any($event.target).value })">
+          @for (a of animations; track a) {
+            <option [value]="a" [selected]="a === tx.animOut">{{ animationLabels[a] }}</option>
+          }
+        </select>
+      </div>
+      <div class="line anim">
+        <label>Duración</label>
+        <input
+          type="number"
+          class="num"
+          min="0.1"
+          max="5"
+          step="0.1"
+          [value]="tx.animDuration"
+          (change)="setText({ animDuration: +$any($event.target).value || tx.animDuration })"
+        />
+        <span class="unit">s</span>
+      </div>
+    </section>
   }
 
   @if (sel.isVisual()) {
@@ -23,6 +119,7 @@
       }
     </section>
 
+    @if (!text()) {
     <section>
       <div class="section-title">
         <span>Color</span>
@@ -32,6 +129,7 @@
         <ng-container [ngTemplateOutlet]="propRow" [ngTemplateOutletContext]="{ $implicit: row }" />
       }
     </section>
+    }
   } @else {
     <p class="hint">Este clip es solo audio: las opciones de volumen y velocidad llegan en la próxima etapa.</p>
   }

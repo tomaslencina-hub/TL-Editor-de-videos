@@ -180,6 +180,9 @@
   &.audio {
     background-color: var(--audio-clip);
   }
+  &.text {
+    background: linear-gradient(135deg, #7b3fc4, #b23ad6);
+  }
   &.selected {
     border: 2px solid var(--snap);
     &.video {

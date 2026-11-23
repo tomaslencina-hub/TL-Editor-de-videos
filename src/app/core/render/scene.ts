@@ -1,5 +1,6 @@
 import { visualParams } from '../../../../shared/animation';
-import type { Clip, Project, Track } from '../../../../shared/model';
+import { clipDuration, type Clip, type Project, type Track } from '../../../../shared/model';
+import { textAnimation } from '../../../../shared/text';
 import { resolveTransitions, type ResolvedTransition } from '../../../../shared/transitions';
 import { composeTrack, type Layer } from '../playback/compose';
 import type { LayerDraw, TrackDraw } from './compositor';
@@ -42,6 +43,7 @@ export interface ResolvedSource {
   width: number;
   height: number;
   sourceRotation?: number;
+  fit?: 'contain' | 'none';
 }
 
 /**
@@ -59,6 +61,13 @@ export function toTrackDraws(
       const src = resolve(p.track, layer);
       if (!src) return undefined;
       const { transform, adjust } = visualParams(layer.clip, clipTime(layer.clip, t));
+      if (layer.clip.text) {
+        // Animaciones de entrada/salida del texto (se suman a la transformación del clip).
+        const anim = textAnimation(layer.clip.text, clipTime(layer.clip, t), clipDuration(layer.clip));
+        transform.opacity *= anim.opacity;
+        transform.y += anim.dy;
+        transform.scale *= anim.scale;
+      }
       return { ...src, transform, adjust };
     };
     if (p.transition) {

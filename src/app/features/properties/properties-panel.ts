@@ -8,6 +8,7 @@ import { ProjectStore } from '../../core/state/project-store';
 import { SelectedClipService } from '../../core/state/selected-clip.service';
 import { hasKeyframeAt, keyframeTimes, KEYFRAME_EPS } from '../../core/timeline/clip-props';
 import { formatTimecode } from '../../core/timeline/time';
+import { FONT_FAMILIES, TEXT_ANIMATION_LABELS, TEXT_ANIMATIONS, type TextContent } from '../../../../shared/text';
 
 interface PropRow {
   prop: AnimatableProp;
@@ -50,6 +51,23 @@ export class PropertiesPanel {
   private readonly store = inject(ProjectStore);
   private readonly playback = inject(PlaybackService);
 
+  protected readonly fonts = FONT_FAMILIES;
+  protected readonly animations = TEXT_ANIMATIONS;
+  protected readonly animationLabels = TEXT_ANIMATION_LABELS;
+  protected readonly text = computed(() => this.sel.clip()?.text ?? null);
+
+  /** Cambia el texto/estilo; los cambios continuos (tipeo, deslizadores) se agrupan en el historial. */
+  protected setText(patch: Partial<TextContent>, mergeKey = 'text'): void {
+    const clip = this.sel.clip();
+    if (!clip?.text || this.sel.track()?.locked) return;
+    this.store.dispatch(Commands.updateText(clip.id, patch), { mergeKey: `${mergeKey}:${clip.id}` });
+  }
+
+  protected setNested<K extends 'stroke' | 'shadow' | 'background'>(key: K, patch: Partial<TextContent[K]>, mergeKey: string): void {
+    const text = this.text();
+    if (text) this.setText({ [key]: { ...text[key], ...patch } } as Partial<TextContent>, mergeKey);
+  }
+
   protected readonly transformRows = TRANSFORM_ROWS;
   protected readonly colorRows = COLOR_ROWS;
 
@@ -57,7 +75,8 @@ export class PropertiesPanel {
     const clip = this.sel.clip();
     if (!clip) return null;
     const fps = this.store.settings().fps;
-    return { start: formatTimecode(clip.start, fps), duration: formatTimecode(clipDuration(clip), fps) };
+    const name = clip.text ? 'Texto' : (this.sel.media()?.name ?? 'Clip');
+    return { name, start: formatTimecode(clip.start, fps), duration: formatTimecode(clipDuration(clip), fps) };
   });
 
   /** Keyframes de todo el clip (para navegar). */

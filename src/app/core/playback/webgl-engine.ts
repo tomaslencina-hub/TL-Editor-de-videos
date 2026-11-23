@@ -4,6 +4,7 @@ import { TL_API } from '../ipc/tl-api';
 import { MediaLibraryService } from '../media/media-library.service';
 import { Compositor } from '../render/compositor';
 import { planFrame, toTrackDraws, TransitionCache, type PlannedTrack } from '../render/scene';
+import { resolveTextLayer, TextRasterizer, type RenderedText } from '../render/text-renderer';
 import { findMedia } from '../timeline/timeline-ops';
 import { composeTrack, type Layer } from './compose';
 import type { PlaybackEngine, PlaybackSurface } from './playback-engine';
@@ -43,6 +44,8 @@ export class WebGLEngine implements PlaybackEngine {
   private compositor: Compositor | null = null;
   private readonly outputs = new Map<string, TrackOutput>();
   private readonly transitions = new TransitionCache();
+  private readonly rasterizer = new TextRasterizer();
+  private readonly uploadedText = new Map<string, RenderedText>();
 
   private last: { project: Project; time: number } | null = null;
   private redrawQueued = false;
@@ -91,9 +94,13 @@ export class WebGLEngine implements PlaybackEngine {
     const comp = this.compositor!;
     const { width, height, backgroundColor } = project.settings;
     const scale = Math.min(1, MAX_PREVIEW_WIDTH / width);
-    comp.setSize(Math.round(width * scale), Math.round(height * scale));
+    comp.setSize(Math.round(width * scale), Math.round(height * scale), width);
     const plan: PlannedTrack[] = planFrame(project, time, this.transitions);
-    const draws = toTrackDraws(plan, time, (track, layer) => this.resolveLayer(track, layer));
+    const draws = toTrackDraws(plan, time, (track, layer) =>
+      layer.clip.text
+        ? resolveTextLayer(comp, this.rasterizer, this.uploadedText, `text:${layer.clip.id}`, layer.clip, time, height)
+        : this.resolveLayer(track, layer),
+    );
     comp.render(backgroundColor, draws);
   }
 

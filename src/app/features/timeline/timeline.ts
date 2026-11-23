@@ -208,6 +208,7 @@ export class Timeline implements AfterViewInit, OnDestroy {
   }
 
   protected clipName(clip: Clip): string {
+    if (clip.text) return `T  ${clip.text.text.split('\n')[0] || 'Texto'}`;
     return this.mediaById().get(clip.sourceId)?.name ?? '¿medio desconocido?';
   }
 

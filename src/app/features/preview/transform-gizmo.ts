@@ -3,6 +3,8 @@ import { visualParams } from '../../../../shared/animation';
 import { PlaybackService } from '../../core/playback/playback.service';
 import { boxContains, layerBox, type LayerBox } from '../../core/render/geometry';
 import { planFrame, TransitionCache } from '../../core/render/scene';
+import { TextRasterizer } from '../../core/render/text-renderer';
+import type { Clip, MediaSource } from '../../../../shared/model';
 import { ProjectStore } from '../../core/state/project-store';
 import { SelectedClipService } from '../../core/state/selected-clip.service';
 import { findMedia } from '../../core/timeline/timeline-ops';
@@ -107,6 +109,16 @@ export class TransformGizmo {
   private readonly playback = inject(PlaybackService);
   private readonly sel = inject(SelectedClipService);
   private readonly transitions = new TransitionCache();
+  private readonly rasterizer = new TextRasterizer();
+
+  /** Tamaño de la fuente de una capa: video (contain) o texto (natural, en píxeles del cuadro). */
+  private sourceSize(clip: Clip, media: MediaSource | undefined): { w: number; h: number; fit: 'contain' | 'none' } | null {
+    if (clip.text) {
+      const r = this.rasterizer.render(clip.text, this.frameH());
+      return { w: r.width, h: r.height, fit: 'none' };
+    }
+    return media?.width && media.height ? { w: media.width, h: media.height, fit: 'contain' } : null;
+  }
 
   protected readonly frameW = computed(() => this.store.settings().width);
   protected readonly frameH = computed(() => this.store.settings().height);
@@ -117,10 +129,11 @@ export class TransformGizmo {
 
   /** Caja del clip seleccionado, si es visual y el playhead está sobre él. */
   protected readonly box = computed<LayerBox | null>(() => {
-    const media = this.sel.media();
+    const clip = this.sel.clip();
     const params = this.sel.params();
-    if (!this.sel.isVisual() || !this.sel.playheadInside() || !media?.width || !media.height || !params) return null;
-    return layerBox(this.frameW(), this.frameH(), media.width, media.height, params.transform);
+    if (!clip || !this.sel.isVisual() || !this.sel.playheadInside() || !params) return null;
+    const size = this.sourceSize(clip, this.sel.media() ?? undefined);
+    return size ? layerBox(this.frameW(), this.frameH(), size.w, size.h, params.transform, size.fit) : null;
   });
 
   private toFrame(e: PointerEvent): { x: number; y: number } {
@@ -137,10 +150,10 @@ export class TransformGizmo {
     const plan = planFrame(project, t, this.transitions);
     for (const track of [...plan].reverse()) {
       for (const layer of [...track.layers].reverse()) {
-        const media = findMedia(project, layer.clip.sourceId);
-        if (!media?.width || !media.height) continue;
+        const size = this.sourceSize(layer.clip, findMedia(project, layer.clip.sourceId));
+        if (!size) continue;
         const { transform } = visualParams(layer.clip, t - layer.clip.start);
-        if (boxContains(layerBox(this.frameW(), this.frameH(), media.width, media.height, transform), p.x, p.y)) {
+        if (boxContains(layerBox(this.frameW(), this.frameH(), size.w, size.h, transform, size.fit), p.x, p.y)) {
           this.store.selectClip(layer.clip.id);
           return;
         }

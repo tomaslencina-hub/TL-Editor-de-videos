@@ -10,6 +10,7 @@
  *    que sumar texto, transiciones, filtros y keyframes no requiera migrar el formato.
  */
 
+import type { TextContent } from './text';
 import { isTransitionType, type TransitionType } from './transitions';
 
 export const PROJECT_FORMAT_VERSION = 1;
@@ -76,6 +77,8 @@ export interface Clip {
   /** Transición de salida hacia lo que haya debajo. Solo se usa si no hay un clip pegado después. */
   transitionOut?: Transition;
 
+  /** Si está presente, es un clip de texto (generado, sin archivo: `sourceId` vacío). */
+  text?: TextContent;
   /** Posición/escala/rotación/opacidad (valores estáticos; los keyframes tienen prioridad). */
   transform?: Partial<ClipTransform>;
   /** Ajustes de color. */

@@ -1,4 +1,5 @@
 import type { AnimatableProp, Clip, Id, MediaSource, Project, ProjectSettings, Track, TrackKind, Transition } from '../../../../shared/model';
+import type { TextContent } from '../../../../shared/text';
 import * as props from '../timeline/clip-props';
 import * as ops from '../timeline/timeline-ops';
 
@@ -60,6 +61,15 @@ export const Commands = {
 
   resetClipProps: (clipId: Id, group: 'transform' | 'adjust') =>
     cmd(group === 'transform' ? 'Restablecer transformación' : 'Restablecer color', (p) => props.resetClipProps(p, clipId, group)),
+
+  addText: (text: TextContent, start: number, transform?: Partial<Clip['transform']>, onCreated?: (clip: Clip) => void) =>
+    cmd('Agregar texto', (p) => {
+      const res = ops.addTextClip(p, text, start, transform);
+      onCreated?.(res.clip);
+      return res.project;
+    }),
+
+  updateText: (clipId: Id, patch: Partial<TextContent>) => cmd('Editar texto', (p) => ops.setClipText(p, clipId, patch)),
 
   setTransition: (clipId: Id, edge: ops.ClipEdge, transition: Transition | null) =>
     cmd(transition ? 'Aplicar transición' : 'Quitar transición', (p) => ops.setTransition(p, clipId, edge, transition)),

@@ -13,8 +13,15 @@ export interface LayerBox {
 /**
  * @param srcW / srcH tamaño visible de la fuente (ya rotado si el archivo trae rotación)
  */
-export function layerBox(frameW: number, frameH: number, srcW: number, srcH: number, t: ClipTransform): LayerBox {
-  const fit = Math.min(frameW / srcW, frameH / srcH);
+export function layerBox(
+  frameW: number,
+  frameH: number,
+  srcW: number,
+  srcH: number,
+  t: ClipTransform,
+  fitMode: 'contain' | 'none' = 'contain',
+): LayerBox {
+  const fit = fitMode === 'none' ? 1 : Math.min(frameW / srcW, frameH / srcH);
   return {
     cx: frameW / 2 + t.x * frameW,
     cy: frameH / 2 + t.y * frameH,

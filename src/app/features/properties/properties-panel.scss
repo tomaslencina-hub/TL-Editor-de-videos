@@ -121,3 +121,66 @@ section {
     font-size: 30px;
   }
 }
+
+.text-section {
+  textarea {
+    width: 100%;
+    resize: vertical;
+    font: inherit;
+    color: var(--text-0);
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 6px 8px;
+    user-select: text;
+  }
+  .line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    select,
+    input[type='range'] {
+      flex: 1;
+      min-width: 0;
+    }
+    input[type='color'] {
+      width: 30px;
+      height: 24px;
+      padding: 0;
+      border: 1px solid var(--border);
+      background: none;
+      border-radius: 4px;
+    }
+    .num {
+      width: 64px;
+      font: inherit;
+      font-size: 12px;
+      color: var(--text-0);
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 3px 4px;
+    }
+    .chk {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      width: 92px;
+      color: var(--text-1);
+      font-size: 12px;
+    }
+    &.anim label {
+      width: 70px;
+      color: var(--text-1);
+      font-size: 12px;
+    }
+    .unit {
+      color: var(--text-2);
+      font-size: 11px;
+    }
+  }
+  .tog {
+    min-width: 28px;
+  }
+}

@@ -2,23 +2,28 @@ import { Component, effect, inject, signal, untracked } from '@angular/core';
 import { ProjectStore } from '../../core/state/project-store';
 import { MediaPanel } from '../media-panel/media-panel';
 import { PropertiesPanel } from '../properties/properties-panel';
+import { TextPanel } from '../text-panel/text-panel';
 import { TransitionsPanel } from '../transitions-panel/transitions-panel';
 
-type Tab = 'media' | 'transitions' | 'props';
+type Tab = 'media' | 'text' | 'transitions' | 'props';
 
 /** Panel izquierdo con pestañas: medios importados, transiciones y propiedades del clip seleccionado. */
 @Component({
   selector: 'app-library',
-  imports: [MediaPanel, TransitionsPanel, PropertiesPanel],
+  imports: [MediaPanel, TextPanel, TransitionsPanel, PropertiesPanel],
   template: `
     <nav class="tabs" role="tablist">
       <button role="tab" [class.active]="tab() === 'media'" (click)="tab.set('media')">🎞 Medios</button>
+      <button role="tab" [class.active]="tab() === 'text'" (click)="tab.set('text')">T Texto</button>
       <button role="tab" [class.active]="tab() === 'transitions'" (click)="tab.set('transitions')">✦ Transiciones</button>
       <button role="tab" [class.active]="tab() === 'props'" (click)="tab.set('props')">⚙ Propiedades</button>
     </nav>
     @switch (tab()) {
       @case ('media') {
         <app-media-panel class="content" />
+      }
+      @case ('text') {
+        <app-text-panel class="content" />
       }
       @case ('transitions') {
         <app-transitions-panel class="content" />

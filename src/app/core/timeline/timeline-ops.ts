@@ -20,6 +20,7 @@ import {
   type Transition,
 } from '../../../../shared/model';
 import { shiftKeyframes, splitKeyframes } from '../../../../shared/animation';
+import type { TextContent } from '../../../../shared/text';
 import { ADJACENT_EPS } from '../../../../shared/transitions';
 
 export const EPS = 1e-6;
@@ -123,7 +124,7 @@ export function trimLimits(project: Project, clipId: Id, edge: TrimEdge): TrimLi
   if (!ref) return null;
   const { clip, track } = ref;
   const media = findMedia(project, clip.sourceId);
-  const sourceDuration = media?.duration ?? clip.outPoint;
+  const sourceDuration = clip.text ? Number.POSITIVE_INFINITY : (media?.duration ?? clip.outPoint);
   const minDur = 1 / project.settings.fps;
   const others = track.clips.filter((c) => c.id !== clipId);
 
@@ -290,6 +291,51 @@ export function setTransition(project: Project, clipId: Id, edge: ClipEdge, tran
   return updateTrack(project, ref.track.id, (t) => ({
     ...t,
     clips: t.clips.map((c) => (c.id === clipId ? updated : c)),
+  }));
+}
+
+// ---------------------------------------------------------------------------- texto
+
+export const DEFAULT_TEXT_DURATION = 5;
+
+/**
+ * Agrega un clip de texto en `start`: en la pista de video más alta que tenga libre el tramo,
+ * o en una pista nueva "Texto" arriba de todo.
+ */
+export function addTextClip(project: Project, text: TextContent, start: number, transform?: Partial<Clip['transform']>): { project: Project; clip: Clip } {
+  const clip: Clip = {
+    id: newId('clip'),
+    sourceId: '',
+    start,
+    inPoint: 0,
+    outPoint: DEFAULT_TEXT_DURATION,
+    text,
+    transform: transform && Object.keys(transform).length ? { ...transform } : undefined,
+  };
+  const end = start + DEFAULT_TEXT_DURATION;
+  const free = project.tracks.find(
+    (t) => t.kind === 'video' && !t.locked && !t.clips.some((c) => c.start < end - EPS && clipEnd(c) > start + EPS),
+  );
+  if (free) return { project: insertClip(project, free.id, clip), clip };
+  const added = addTrack(project, 'video', nextTextTrackName(project));
+  return { project: insertClip(added.project, added.track.id, clip), clip };
+}
+
+function nextTextTrackName(project: Project): string {
+  const used = new Set(project.tracks.map((t) => t.name));
+  if (!used.has('Texto')) return 'Texto';
+  let n = 2;
+  while (used.has(`Texto ${n}`)) n++;
+  return `Texto ${n}`;
+}
+
+export function setClipText(project: Project, clipId: Id, patch: Partial<TextContent>): Project {
+  const ref = findClip(project, clipId);
+  if (!ref?.clip.text) return project;
+  const text: TextContent = { ...ref.clip.text, ...patch };
+  return updateTrack(project, ref.track.id, (t) => ({
+    ...t,
+    clips: t.clips.map((c) => (c.id === clipId ? { ...c, text } : c)),
   }));
 }
 

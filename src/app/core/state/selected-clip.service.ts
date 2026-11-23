@@ -22,7 +22,9 @@ export class SelectedClipService {
     const clip = this.clip();
     return clip ? (findMedia(this.store.project(), clip.sourceId) ?? null) : null;
   });
-  readonly isVisual = computed(() => !!this.track() && this.track()!.kind !== 'audio' && !!this.media()?.hasVideo);
+  readonly isVisual = computed(
+    () => !!this.track() && this.track()!.kind !== 'audio' && (!!this.clip()?.text || !!this.media()?.hasVideo),
+  );
 
   /** Tiempo del playhead relativo al inicio del clip, limitado a su duración. */
   readonly clipTime = computed(() => {

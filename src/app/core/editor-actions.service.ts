@@ -1,6 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import type { MenuAction } from '../../../shared/ipc-contract';
 import { createEmptyProject } from '../../../shared/model';
+import { makeText, type TextPreset } from '../../../shared/text';
 import { Commands } from './commands/command';
 import { ExportService } from './export/export.service';
 import { TL_API } from './ipc/tl-api';
@@ -101,6 +102,14 @@ export class EditorActionsService {
         .filter((id): id is string => !!id);
     }
     if (ids.length) this.store.dispatch(Commands.splitClips(ids, t));
+  }
+
+  /** Agrega un texto (de un estilo prearmado) en el playhead y lo selecciona. */
+  addText(preset?: TextPreset, start = this.playback.currentTime()): void {
+    let created: string | null = null;
+    const transform = preset ? { x: preset.x ?? 0, y: preset.y ?? 0 } : undefined;
+    this.store.dispatch(Commands.addText(makeText(preset), start, transform, (c) => (created = c.id)));
+    if (created) this.store.selectClip(created);
   }
 
   deleteSelected(): void {

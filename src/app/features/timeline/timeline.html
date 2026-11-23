@@ -158,6 +158,7 @@
               [class.selected]="store.selectedClipId() === clip.id"
               [class.dragging]="preview()?.clipId === clip.id"
               [class.missing]="assets?.missing"
+              [class.text]="!!clip.text"
               [class.muted]="row.track.muted"
               [attr.data-clip-id]="clip.id"
               [style.left.px]="clip.start * view.pps()"

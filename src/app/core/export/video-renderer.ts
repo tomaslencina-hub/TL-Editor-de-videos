@@ -16,6 +16,7 @@ import {
 import { projectDuration, type Clip, type MediaSource, type Project } from '../../../../shared/model';
 import { Compositor } from '../render/compositor';
 import { planFrame, toTrackDraws, TransitionCache } from '../render/scene';
+import { resolveTextLayer, TextRasterizer, type RenderedText } from '../render/text-renderer';
 
 export class ExportCancelled extends Error {
   constructor() {
@@ -100,6 +101,8 @@ export async function renderVideo(opts: VideoRenderOptions): Promise<void> {
   await output.start();
 
   const readers = new Map<string, ClipReader>();
+  const rasterizer = new TextRasterizer();
+  const uploadedText = new Map<string, RenderedText>();
   const openReader = async (p: ClipPlan): Promise<ClipReader> => {
     const input = new Input({ source: new UrlSource(opts.sourceUrl(p.media)), formats: ALL_FORMATS });
     const track = await input.getPrimaryVideoTrack();
@@ -157,6 +160,7 @@ export async function renderVideo(opts: VideoRenderOptions): Promise<void> {
 
       // 4) Compone y codifica.
       const draws = toTrackDraws(plan, t, (_track, layer) => {
+        if (layer.clip.text) return resolveTextLayer(compositor, rasterizer, uploadedText, `text:${layer.clip.id}`, layer.clip, t, H);
         const r = readers.get(layer.clip.id);
         return r?.hasTexture ? { texture: layer.clip.id, width: r.width, height: r.height, sourceRotation: r.rotation } : null;
       });

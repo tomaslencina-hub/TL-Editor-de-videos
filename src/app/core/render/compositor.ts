@@ -11,6 +11,11 @@ export interface LayerDraw {
   height: number;
   /** Rotación propia del archivo (metadatos de celulares), en grados: 0, 90, 180 o 270. */
   sourceRotation?: number;
+  /**
+   * 'contain' (video/imagen): se encaja en el cuadro. 'none' (texto): tamaño natural, con
+   * width/height en píxeles del cuadro del proyecto.
+   */
+  fit?: 'contain' | 'none';
   transform: ClipTransform;
   adjust: ColorAdjust;
 }
@@ -58,6 +63,8 @@ export class Compositor {
   readonly gl: GL;
   private width = 0;
   private height = 0;
+  /** Píxeles de canvas por píxel del cuadro del proyecto (la vista previa puede ir a menor resolución). */
+  private unit = 1;
   private readonly layerProg: WebGLProgram;
   private readonly transProg: WebGLProgram;
   private readonly quad: WebGLVertexArrayObject;
@@ -86,7 +93,9 @@ export class Compositor {
     gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
   }
 
-  setSize(width: number, height: number): void {
+  /** @param frameWidth ancho del cuadro del proyecto (si el canvas es más chico, p. ej. en la vista previa). */
+  setSize(width: number, height: number, frameWidth = width): void {
+    this.unit = width / frameWidth;
     if (width === this.width && height === this.height) return;
     this.width = width;
     this.height = height;
@@ -257,7 +266,12 @@ export class Compositor {
     const srcRot = layer.sourceRotation ?? 0;
     const swapped = srcRot % 180 !== 0;
     // El encaje usa el tamaño ya rotado; el quad se dibuja con el tamaño original y se rota.
-    const fit = swapped ? Math.min(W / layer.height, H / layer.width) : Math.min(W / layer.width, H / layer.height);
+    const fit =
+      layer.fit === 'none'
+        ? this.unit
+        : swapped
+          ? Math.min(W / layer.height, H / layer.width)
+          : Math.min(W / layer.width, H / layer.height);
     const dw = layer.width * fit * t.scale;
     const dh = layer.height * fit * t.scale;
     const cx = W / 2 + t.x * W;
