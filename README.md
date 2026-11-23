@@ -1,4 +1,4 @@
-# LensTom — Motion Video Editor (v0.1)
+# SHOTON — Video Editor
 
 Editor de video de escritorio estilo Filmora: **Electron + Angular 22 (standalone, signals, zoneless) + FFmpeg nativo**.
 

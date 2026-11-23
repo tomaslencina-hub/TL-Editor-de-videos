@@ -17,8 +17,8 @@ let mainWindow: BrowserWindow | null = null;
 if (devUrl) app.commandLine.appendSwitch('disable-http-cache');
 
 // En Windows agrupa la ventana en la barra de tareas con identidad (e ícono) propia, no la de Electron.
-if (process.platform === 'win32') app.setAppUserModelId('com.lenstom.editor');
-app.setName('LensTom');
+if (process.platform === 'win32') app.setAppUserModelId('com.shoton.editor');
+app.setName('SHOTON');
 
 registerMediaSchemePrivileges();
 
@@ -29,7 +29,7 @@ function createWindow(): void {
     minWidth: 1000,
     minHeight: 640,
     backgroundColor: '#16171b',
-    title: 'LensTom',
+    title: 'SHOTON',
     icon: APP_ICON,
     show: false,
     webPreferences: {

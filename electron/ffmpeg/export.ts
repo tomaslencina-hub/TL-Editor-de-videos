@@ -27,7 +27,7 @@ export class ExportManager {
 
   async begin(outputPath: string): Promise<string> {
     const id = randomUUID();
-    const videoPath = path.join(os.tmpdir(), `lenstom-${id}-video.mp4`);
+    const videoPath = path.join(os.tmpdir(), `shoton-${id}-video.mp4`);
     const file = await fs.promises.open(videoPath, 'w');
     this.jobs.set(id, { outputPath, videoPath, file, proc: null, cancelled: false });
     return id;
@@ -41,7 +41,7 @@ export class ExportManager {
   async finish(id: string, project: Project, onProgress: (p: ExportProgress) => void): Promise<ExportResult> {
     const job = this.job(id);
     await job.file.close();
-    const scriptPath = path.join(os.tmpdir(), `lenstom-${id}-audio.txt`);
+    const scriptPath = path.join(os.tmpdir(), `shoton-${id}-audio.txt`);
     try {
       const plan = buildAudioPlan(project, 1);
       await fs.promises.writeFile(scriptPath, plan.filterGraph, 'utf8');
