@@ -48,7 +48,7 @@ export class App {
   @HostListener('window:keydown', ['$event'])
   protected onKeyDown(e: KeyboardEvent): void {
     const target = e.target as HTMLElement | null;
-    if (target && (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.isContentEditable)) return;
+    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable)) return;
     const ctrl = e.ctrlKey || e.metaKey;
     const key = e.key.toLowerCase();
 
@@ -60,8 +60,20 @@ export class App {
       this.playback.toggle();
     } else if ((ctrl && key === 'b') || (!ctrl && key === 's')) {
       this.actions.splitAtPlayhead();
+    } else if ((key === 'delete' || key === 'backspace') && e.shiftKey) {
+      this.actions.rippleDeleteSelected();
     } else if (key === 'delete' || key === 'backspace') {
       this.actions.deleteSelected();
+    } else if (ctrl && key === 'c') {
+      this.actions.copy();
+    } else if (ctrl && key === 'x') {
+      this.actions.cut();
+    } else if (ctrl && key === 'v') {
+      this.actions.paste();
+    } else if (ctrl && key === 'd') {
+      this.actions.duplicate();
+    } else if (!ctrl && key === 'm') {
+      this.actions.addMarker();
     } else if (key === 'arrowleft') {
       this.playback.step(e.shiftKey ? -10 : -1);
     } else if (key === 'arrowright') {

@@ -10,7 +10,7 @@ import { thumbnail } from './ffmpeg/thumbnail';
 import { waveform } from './ffmpeg/waveform';
 import { toMediaUrl } from './media-protocol';
 
-const MEDIA_EXTENSIONS = ['mp4', 'm4v', 'mov', 'webm', 'mkv', 'avi', 'ogv', 'mp3', 'm4a', 'aac', 'wav', 'ogg', 'oga', 'opus', 'flac'];
+const MEDIA_EXTENSIONS = ['mp4', 'm4v', 'mov', 'webm', 'mkv', 'avi', 'ogv', 'mp3', 'm4a', 'aac', 'wav', 'ogg', 'oga', 'opus', 'flac', 'png', 'jpg', 'jpeg', 'webp', 'bmp', 'gif'];
 
 export function registerIpc(getWindow: () => BrowserWindow | null): void {
   const thumbsDir = path.join(app.getPath('userData'), 'cache', 'thumbs');
@@ -23,7 +23,7 @@ export function registerIpc(getWindow: () => BrowserWindow | null): void {
       title: 'Importar medios',
       properties: ['openFile', 'multiSelections'],
       filters: [
-        { name: 'Video y audio', extensions: MEDIA_EXTENSIONS },
+        { name: 'Video, audio e imágenes', extensions: MEDIA_EXTENSIONS },
         { name: 'Todos los archivos', extensions: ['*'] },
       ],
     };

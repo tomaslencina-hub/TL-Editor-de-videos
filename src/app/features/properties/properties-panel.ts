@@ -73,7 +73,7 @@ export class PropertiesPanel {
   protected readonly volumeRow: PropRow = { prop: 'volume', label: 'Volumen', min: 0, max: 200, step: 1, unit: '%', ...pct };
   protected readonly speedPresets = [0.25, 0.5, 1, 1.5, 2, 4];
 
-  protected readonly isMedia = computed(() => !!this.sel.media() && !this.sel.clip()?.text);
+  protected readonly isMedia = computed(() => !!this.sel.media() && !this.sel.clip()?.text && this.sel.media()?.kind !== 'image');
   protected readonly hasAudio = computed(() => this.isMedia() && !!this.sel.media()?.hasAudio);
   protected readonly canDetach = computed(
     () => this.hasAudio() && this.sel.track()?.kind === 'video' && !this.sel.clip()?.audioMuted,

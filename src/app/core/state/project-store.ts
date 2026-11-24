@@ -28,17 +28,47 @@ export class ProjectStore {
   readonly filePath = signal<string | null>(null);
 
   /** Estado de UI (no forma parte del modelo ni del historial). Clip y transición son excluyentes. */
+  /** Clip principal de la selección (el que muestra Propiedades y las manijas). */
   readonly selectedClipId = signal<Id | null>(null);
+  /** Todos los clips seleccionados (incluye el principal). */
+  readonly selectedClipIds = signal<Id[]>([]);
   readonly selectedTransition = signal<{ clipId: Id; edge: 'in' | 'out' } | null>(null);
 
-  selectClip(id: Id | null): void {
+  /** @param additive Ctrl/Shift + clic: agrega o quita el clip de la selección. */
+  selectClip(id: Id | null, additive = false): void {
+    if (!id) {
+      this.selectedClipId.set(null);
+      this.selectedClipIds.set([]);
+      return;
+    }
+    this.selectedTransition.set(null);
+    if (additive) {
+      const ids = this.selectedClipIds();
+      if (ids.includes(id)) {
+        const rest = ids.filter((x) => x !== id);
+        this.selectedClipIds.set(rest);
+        this.selectedClipId.set(rest.at(-1) ?? null);
+        return;
+      }
+      this.selectedClipIds.set([...ids, id]);
+    } else if (!this.selectedClipIds().includes(id) || this.selectedClipIds().length <= 1) {
+      this.selectedClipIds.set([id]);
+    }
     this.selectedClipId.set(id);
-    if (id) this.selectedTransition.set(null);
+  }
+
+  selectClips(ids: Id[]): void {
+    this.selectedTransition.set(null);
+    this.selectedClipIds.set(ids);
+    this.selectedClipId.set(ids.at(-1) ?? null);
   }
 
   selectTransition(sel: { clipId: Id; edge: 'in' | 'out' } | null): void {
     this.selectedTransition.set(sel);
-    if (sel) this.selectedClipId.set(null);
+    if (sel) {
+      this.selectedClipId.set(null);
+      this.selectedClipIds.set([]);
+    }
   }
 
   readonly settings = computed(() => this._project().settings);
@@ -100,6 +130,7 @@ export class ProjectStore {
     this._redo.set([]);
     this.filePath.set(filePath);
     this.selectedClipId.set(null);
+    this.selectedClipIds.set([]);
     this.selectedTransition.set(null);
   }
 
@@ -110,8 +141,10 @@ export class ProjectStore {
 
   private pruneSelection(): void {
     const findClip = (id: Id) => this._project().tracks.flatMap((t) => t.clips).find((c) => c.id === id);
+    const ids = this.selectedClipIds().filter((x) => !!findClip(x));
+    if (ids.length !== this.selectedClipIds().length) this.selectedClipIds.set(ids);
     const id = this.selectedClipId();
-    if (id && !findClip(id)) this.selectedClipId.set(null);
+    if (id && !findClip(id)) this.selectedClipId.set(ids.at(-1) ?? null);
     const tr = this.selectedTransition();
     if (tr) {
       const clip = findClip(tr.clipId);

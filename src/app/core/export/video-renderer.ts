@@ -16,6 +16,7 @@ import {
 import { projectDuration, type Clip, type MediaSource, type Project } from '../../../../shared/model';
 import { Compositor } from '../render/compositor';
 import { planFrame, toTrackDraws, TransitionCache } from '../render/scene';
+import { ImageCache } from '../render/image-cache';
 import { resolveTextLayer, TextRasterizer, type RenderedText } from '../render/text-renderer';
 
 export class ExportCancelled extends Error {
@@ -74,7 +75,7 @@ export async function renderVideo(opts: VideoRenderOptions): Promise<void> {
     for (const track of plan) {
       for (const layer of track.layers) {
         const media = mediaById.get(layer.clip.sourceId);
-        if (!media?.hasVideo) continue;
+        if (!media?.hasVideo || media.kind === 'image') continue;
         let p = plans.get(layer.clip.id);
         if (!p) plans.set(layer.clip.id, (p = { clip: layer.clip, media, times: [], firstFrame: n, lastFrame: n }));
         // Fuera del material disponible se congela el primer/último cuadro.
@@ -103,6 +104,12 @@ export async function renderVideo(opts: VideoRenderOptions): Promise<void> {
   const readers = new Map<string, ClipReader>();
   const rasterizer = new TextRasterizer();
   const uploadedText = new Map<string, RenderedText>();
+  // Imágenes: se precargan todas antes de empezar a componer.
+  const images = new ImageCache();
+  const uploadedImages = new Set<string>();
+  const imageUrl = new Map<string, string>();
+  for (const m of project.media) if (m.kind === 'image') imageUrl.set(m.id, opts.sourceUrl(m));
+  await Promise.all([...imageUrl.values()].map((u) => images.load(u)));
   const openReader = async (p: ClipPlan): Promise<ClipReader> => {
     const input = new Input({ source: new UrlSource(opts.sourceUrl(p.media)), formats: ALL_FORMATS });
     const track = await input.getPrimaryVideoTrack();
@@ -161,6 +168,8 @@ export async function renderVideo(opts: VideoRenderOptions): Promise<void> {
       // 4) Compone y codifica.
       const draws = toTrackDraws(plan, t, (_track, layer) => {
         if (layer.clip.text) return resolveTextLayer(compositor, rasterizer, uploadedText, `text:${layer.clip.id}`, layer.clip, t, H);
+        const img = imageUrl.get(layer.clip.sourceId);
+        if (img) return images.resolve(compositor, uploadedImages, `img:${layer.clip.id}`, img);
         const r = readers.get(layer.clip.id);
         return r?.hasTexture ? { texture: layer.clip.id, width: r.width, height: r.height, sourceRotation: r.rotation } : null;
       });
@@ -180,6 +189,7 @@ export async function renderVideo(opts: VideoRenderOptions): Promise<void> {
   } finally {
     for (const id of [...readers.keys()]) await closeReader(id);
     compositor.dispose();
+    images.dispose();
   }
 }
 

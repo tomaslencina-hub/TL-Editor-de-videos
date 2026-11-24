@@ -100,6 +100,8 @@
               {{ row.track.locked ? '🔒' : '🔓' }}
             </button>
             <button class="icon small" title="Renombrar pista" (click)="editingTrackId.set(row.track.id)">✎</button>
+            <button class="icon small" title="Subir pista" [disabled]="!canMove(row.track, -1)" (click)="moveTrack(row.track, -1)">▲</button>
+            <button class="icon small" title="Bajar pista" [disabled]="!canMove(row.track, 1)" (click)="moveTrack(row.track, 1)">▼</button>
             <button
               class="icon small"
               [disabled]="!row.removable"
@@ -133,6 +135,16 @@
           [width]="viewportWidth()"
           [height]="RULER_HEIGHT"
         />
+        @for (m of markers(); track m.id) {
+          <div
+            class="marker"
+            [style.left.px]="m.time * view.pps()"
+            [style.--marker-color]="m.color"
+            [title]="m.label + ' — clic: ir · clic derecho: quitar'"
+            (pointerdown)="onMarkerPointerDown($event, m.time)"
+            (contextmenu)="removeMarker($event, m.id)"
+          ></div>
+        }
         <div class="playhead-handle" [style.left.px]="playheadX()"></div>
       </div>
 
@@ -155,7 +167,8 @@
             <div
               class="clip"
               [class]="row.track.kind"
-              [class.selected]="store.selectedClipId() === clip.id"
+              [class.selected]="isSelected(clip.id)"
+              [class.primary]="store.selectedClipId() === clip.id"
               [class.dragging]="preview()?.clipId === clip.id"
               [class.missing]="assets?.missing"
               [class.text]="!!clip.text"

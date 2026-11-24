@@ -8,7 +8,8 @@ import { TL_API } from './ipc/tl-api';
 import { errorMessage, MediaLibraryService } from './media/media-library.service';
 import { PlaybackService } from './playback/playback.service';
 import { ProjectStore } from './state/project-store';
-import { clipAt, findClip } from './timeline/timeline-ops';
+import { clipDuration } from '../../../shared/model';
+import { clipAt, copyClips, findClip, type ClipboardData } from './timeline/timeline-ops';
 import { NotificationsService } from './ui/notifications.service';
 
 /** Acciones de alto nivel del editor (menú, atajos, botones). */
@@ -118,10 +119,58 @@ export class EditorActionsService {
       this.store.dispatch(Commands.setTransition(tr.clipId, tr.edge, null));
       return;
     }
-    const id = this.store.selectedClipId();
-    if (!id) return;
-    const ref = findClip(this.store.project(), id);
-    if (ref?.track.locked) return;
-    this.store.dispatch(Commands.deleteClips([id]));
+    const ids = this.editableSelection();
+    if (ids.length) this.store.dispatch(Commands.deleteClips(ids));
+  }
+
+  /** Shift+Supr: borra y corre a la izquierda lo que sigue en la pista. */
+  rippleDeleteSelected(): void {
+    const ids = this.editableSelection();
+    if (ids.length) this.store.dispatch(Commands.rippleDelete(ids));
+  }
+
+  // ---- portapapeles (interno de la app) ----
+  private clipboard: ClipboardData | null = null;
+
+  copy(): boolean {
+    this.clipboard = copyClips(this.store.project(), this.store.selectedClipIds());
+    if (this.clipboard) this.notify.show(`${this.clipboard.items.length} clip(s) copiado(s)`, 'info', 1500);
+    return !!this.clipboard;
+  }
+
+  cut(): void {
+    if (this.copy()) this.deleteSelected();
+  }
+
+  paste(at = this.playback.currentTime()): void {
+    if (!this.clipboard) return;
+    let ids: string[] = [];
+    this.store.dispatch(Commands.pasteClips(this.clipboard, at, (x) => (ids = x)));
+    if (ids.length) this.store.selectClips(ids);
+  }
+
+  /** Ctrl+D: duplica la selección justo después de su último clip. */
+  duplicate(): void {
+    const data = copyClips(this.store.project(), this.store.selectedClipIds());
+    if (!data) return;
+    const end = Math.max(...data.items.map((i) => i.clip.start + clipDuration(i.clip)));
+    const first = Math.min(...data.items.map((i) => i.clip.start));
+    const saved = this.clipboard;
+    this.clipboard = data;
+    this.paste(first + (end - first));
+    this.clipboard = saved;
+  }
+
+  addMarker(): void {
+    this.store.dispatch(Commands.addMarker(this.playback.currentTime()));
+  }
+
+  /** Clips seleccionados que no están en pistas bloqueadas. */
+  private editableSelection(): string[] {
+    const p = this.store.project();
+    return this.store.selectedClipIds().filter((id) => {
+      const ref = findClip(p, id);
+      return ref && !ref.track.locked;
+    });
   }
 }

@@ -12,7 +12,7 @@ import {
   viewChild,
   type AfterViewInit,
 } from '@angular/core';
-import { clipDuration, clipEnd, clipSpeed, sourceTime, type Clip, type Id, type MediaSource, type Track, type TrackKind } from '../../../../shared/model';
+import { clipDuration, clipEnd, clipSpeed, initialClipDuration, sourceTime, type Clip, type Id, type MediaSource, type Track, type TrackKind } from '../../../../shared/model';
 import {
   DEFAULT_TRANSITION_DURATION,
   MIN_TRANSITION_DURATION,
@@ -321,6 +321,10 @@ export class Timeline implements AfterViewInit, OnDestroy {
   protected onClipPointerDown(e: PointerEvent, clip: Clip, track: Track, mode: 'move' | TrimEdge): void {
     if (e.button !== 0) return;
     e.stopPropagation();
+    if (e.ctrlKey || e.metaKey || e.shiftKey) {
+      this.store.selectClip(clip.id, true);
+      return;
+    }
     this.store.selectClip(clip.id);
     if (track.locked) return;
     this.beginCapture(e);
@@ -440,13 +444,13 @@ export class Timeline implements AfterViewInit, OnDestroy {
     let snapped = false;
     if (this.snapEnabled(e)) {
       const points = collectSnapPoints(this.store.project(), this.playback.currentTime());
-      const s = snap([start, start + media.duration], points, SNAP_PX / this.view.pps());
+      const s = snap([start, start + initialClipDuration(media)], points, SNAP_PX / this.view.pps());
       start += s.delta;
       snapped = s.point !== null;
       this.snapLine.set(s.point);
     }
     if (!snapped) start = roundToFrame(start, this.store.settings().fps);
-    this.dropGhost.set({ trackId: track.id, start: Math.max(0, start), duration: media.duration, kind: 'media' });
+    this.dropGhost.set({ trackId: track.id, start: Math.max(0, start), duration: initialClipDuration(media), kind: 'media' });
   }
 
   protected onTrackDragLeave(e: DragEvent): void {
@@ -571,6 +575,36 @@ export class Timeline implements AfterViewInit, OnDestroy {
     this.editingTrackId.set(null);
     const name = value.trim();
     if (name && name !== track.name) this.store.dispatch(Commands.renameTrack(track.id, name));
+  }
+
+  protected isSelected(clipId: Id): boolean {
+    return this.store.selectedClipIds().includes(clipId);
+  }
+
+  protected moveTrack(track: Track, direction: -1 | 1): void {
+    this.store.dispatch(Commands.moveTrack(track.id, direction));
+  }
+
+  /** Puede subir/bajar sin cruzarse con pistas del otro tipo. */
+  protected canMove(track: Track, direction: -1 | 1): boolean {
+    const tracks = this.store.project().tracks;
+    const j = tracks.findIndex((t) => t.id === track.id) + direction;
+    return j >= 0 && j < tracks.length && tracks[j].kind === track.kind;
+  }
+
+  protected readonly markers = computed(() => this.store.project().markers ?? []);
+
+  protected onMarkerPointerDown(e: PointerEvent, time: number): void {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    this.playback.pause();
+    this.playback.seek(time);
+  }
+
+  protected removeMarker(e: MouseEvent, id: Id): void {
+    e.preventDefault();
+    e.stopPropagation();
+    this.store.dispatch(Commands.removeMarker(id));
   }
 
   protected toggleMute(track: Track): void {

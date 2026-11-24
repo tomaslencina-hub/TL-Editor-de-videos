@@ -15,7 +15,7 @@ interface FfprobeStream {
 
 interface FfprobeOutput {
   streams?: FfprobeStream[];
-  format?: { duration?: string };
+  format?: { duration?: string; format_name?: string };
 }
 
 function parseRate(rate: string | undefined): number | undefined {
@@ -41,8 +41,24 @@ export async function probe(filePath: string): Promise<ProbeResult> {
   const video = streams.find((s) => s.codec_type === 'video' && !s.disposition?.attached_pic);
   const audio = streams.find((s) => s.codec_type === 'audio');
 
-  const duration = Number(data.format?.duration ?? video?.duration ?? audio?.duration);
   if (!video && !audio) throw new Error('El archivo no tiene pistas de video ni de audio.');
+
+  // Imágenes fijas (png, jpg, webp, bmp, gif): un solo cuadro, sin duración propia.
+  const format = data.format?.format_name ?? '';
+  if (video && !audio && /image2|_pipe|^gif$|^webp/.test(format)) {
+    return {
+      path: filePath,
+      name: path.basename(filePath),
+      kind: 'image',
+      duration: 0,
+      hasVideo: true,
+      hasAudio: false,
+      width: video.width,
+      height: video.height,
+    };
+  }
+
+  const duration = Number(data.format?.duration ?? video?.duration ?? audio?.duration);
   if (!Number.isFinite(duration) || duration <= 0) {
     throw new Error('No se pudo determinar la duración (¿imagen fija? no soportada en v0.1).');
   }

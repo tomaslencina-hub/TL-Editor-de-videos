@@ -42,7 +42,7 @@ export class MediaPanel {
   }
 
   protected details(m: MediaSource): string {
-    const parts = [formatDuration(m.duration)];
+    const parts = m.kind === 'image' ? ['imagen'] : [formatDuration(m.duration)];
     if (m.width && m.height) parts.push(`${m.width}×${m.height}`);
     if (m.fps) parts.push(`${m.fps} fps`);
     if (!m.hasVideo) parts.push('audio');

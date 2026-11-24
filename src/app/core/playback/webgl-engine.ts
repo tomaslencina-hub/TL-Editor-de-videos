@@ -5,6 +5,7 @@ import { TL_API } from '../ipc/tl-api';
 import { MediaLibraryService } from '../media/media-library.service';
 import { Compositor } from '../render/compositor';
 import { planFrame, toTrackDraws, TransitionCache, type PlannedTrack } from '../render/scene';
+import { ImageCache } from '../render/image-cache';
 import { resolveTextLayer, TextRasterizer, type RenderedText } from '../render/text-renderer';
 import { findMedia } from '../timeline/timeline-ops';
 import { composeTrack, type Layer } from './compose';
@@ -49,6 +50,8 @@ export class WebGLEngine implements PlaybackEngine {
   private readonly transitions = new TransitionCache();
   private readonly rasterizer = new TextRasterizer();
   private readonly uploadedText = new Map<string, RenderedText>();
+  private readonly images = new ImageCache();
+  private readonly uploadedImages = new Set<string>();
 
   private last: { project: Project; time: number } | null = null;
   private redrawQueued = false;
@@ -69,6 +72,8 @@ export class WebGLEngine implements PlaybackEngine {
     for (const out of this.outputs.values()) out.slots.forEach((s) => this.destroy(s.el));
     this.outputs.clear();
     this.compositor?.dispose();
+    this.images.dispose();
+    this.uploadedImages.clear();
     this.canvas?.remove();
     this.holder?.remove();
     this.compositor = null;
@@ -99,11 +104,16 @@ export class WebGLEngine implements PlaybackEngine {
     const scale = Math.min(1, MAX_PREVIEW_WIDTH / width);
     comp.setSize(Math.round(width * scale), Math.round(height * scale), width);
     const plan: PlannedTrack[] = planFrame(project, time, this.transitions);
-    const draws = toTrackDraws(plan, time, (track, layer) =>
-      layer.clip.text
-        ? resolveTextLayer(comp, this.rasterizer, this.uploadedText, `text:${layer.clip.id}`, layer.clip, time, height)
-        : this.resolveLayer(track, layer),
-    );
+    const draws = toTrackDraws(plan, time, (track, layer) => {
+      if (layer.clip.text) {
+        return resolveTextLayer(comp, this.rasterizer, this.uploadedText, `text:${layer.clip.id}`, layer.clip, time, height);
+      }
+      const media = findMedia(project, layer.clip.sourceId);
+      if (media?.kind === 'image') {
+        return this.images.resolve(comp, this.uploadedImages, `img:${layer.clip.id}`, this.api.mediaUrl(media.path), this.queueRedraw);
+      }
+      return this.resolveLayer(track, layer);
+    });
     comp.render(backgroundColor, draws);
   }
 
@@ -205,6 +215,7 @@ export class WebGLEngine implements PlaybackEngine {
     const assignment = new Map<Slot, Layer>();
     const pending: Layer[] = [];
     for (const layer of layers) {
+      if (layer.clip.text || findMedia(project, layer.clip.sourceId)?.kind === 'image') continue;
       const slot = out.slots.find((s) => s.clipId === layer.clip.id && !assignment.has(s));
       if (slot) assignment.set(slot, layer);
       else pending.push(layer);

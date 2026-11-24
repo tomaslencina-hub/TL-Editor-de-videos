@@ -27,7 +27,15 @@ export interface ProjectSettings {
   backgroundColor: string;
 }
 
-export type MediaKind = 'video' | 'audio';
+export type MediaKind = 'video' | 'audio' | 'image';
+
+/** Duración inicial de una imagen al ponerla en la timeline (s). Después se puede estirar sin límite. */
+export const DEFAULT_IMAGE_DURATION = 5;
+
+/** Duración con la que entra un medio a la timeline. */
+export function initialClipDuration(media: Pick<MediaSource, 'kind' | 'duration'>): number {
+  return media.kind === 'image' ? DEFAULT_IMAGE_DURATION : media.duration;
+}
 
 /** Archivo fuente importado al panel de medios. */
 export interface MediaSource {
@@ -171,6 +179,16 @@ export interface Project {
    * de las de abajo; el audio de todas las pistas se mezcla.
    */
   tracks: Track[];
+  /** Marcadores en la timeline (opcional para compatibilidad con proyectos viejos). */
+  markers?: Marker[];
+}
+
+export interface Marker {
+  id: Id;
+  /** Posición en la timeline (s). */
+  time: number;
+  label: string;
+  color: string;
 }
 
 // ---------------------------------------------------------------------------

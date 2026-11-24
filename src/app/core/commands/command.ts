@@ -77,6 +77,19 @@ export const Commands = {
 
   updateText: (clipId: Id, patch: Partial<TextContent>) => cmd('Editar texto', (p) => ops.setClipText(p, clipId, patch)),
 
+  rippleDelete: (clipIds: Id[]) => cmd('Borrar y cerrar hueco', (p) => ops.rippleDelete(p, clipIds)),
+
+  pasteClips: (data: ops.ClipboardData, at: number, onPasted?: (ids: Id[]) => void) =>
+    cmd('Pegar', (p) => {
+      const res = ops.pasteClips(p, data, at);
+      onPasted?.(res.ids);
+      return res.project;
+    }),
+
+  addMarker: (time: number) => cmd('Agregar marcador', (p) => ops.addMarker(p, time).project),
+  removeMarker: (id: Id) => cmd('Quitar marcador', (p) => ops.removeMarker(p, id)),
+  moveTrack: (trackId: Id, direction: -1 | 1) => cmd('Mover pista', (p) => ops.moveTrack(p, trackId, direction)),
+
   setTransition: (clipId: Id, edge: ops.ClipEdge, transition: Transition | null) =>
     cmd(transition ? 'Aplicar transición' : 'Quitar transición', (p) => ops.setTransition(p, clipId, edge, transition)),
 };

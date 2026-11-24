@@ -324,3 +324,15 @@
 .snap-line {
   border-left: 1px dashed var(--snap);
 }
+
+.marker {
+  position: absolute;
+  top: 0;
+  width: 11px;
+  height: 12px;
+  margin-left: -5px;
+  background: var(--marker-color, #ffd84d);
+  clip-path: polygon(0 0, 100% 0, 100% 60%, 50% 100%, 0 60%);
+  cursor: pointer;
+  z-index: 2;
+}

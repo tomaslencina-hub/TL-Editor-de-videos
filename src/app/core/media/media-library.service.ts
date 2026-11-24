@@ -97,7 +97,7 @@ export class MediaLibraryService {
     if (media.hasVideo) {
       tasks.push(
         this.api
-          .thumbnail(media.path, Math.min(1, media.duration * 0.1))
+          .thumbnail(media.path, media.kind === 'image' ? 0 : Math.min(1, media.duration * 0.1))
           .then((thumbnail) => this.patch(media.id, { thumbnail }))
           .catch((e: unknown) => console.warn('Miniatura', media.path, e)),
       );
@@ -110,7 +110,7 @@ export class MediaLibraryService {
           .catch((e: unknown) => console.warn('Onda de audio', media.path, e)),
       );
     }
-    if (media.hasVideo) tasks.push(this.ensureDecodable(media));
+    if (media.hasVideo && media.kind !== 'image') tasks.push(this.ensureDecodable(media));
     await Promise.all(tasks);
   }
 

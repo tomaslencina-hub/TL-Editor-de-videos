@@ -12,18 +12,21 @@ export async function thumbnail(cacheDir: string, filePath: string, atSeconds: n
   const key = createHash('sha1')
     .update(`${filePath}|${stat.size}|${stat.mtimeMs}|${atSeconds.toFixed(2)}`)
     .digest('hex');
-  const out = path.join(cacheDir, `${key}.jpg`);
+  // Imágenes que pueden tener transparencia: miniatura en PNG (el JPG no tiene canal alfa).
+  const alpha = /.(png|webp|gif)$/i.test(filePath);
+  const out = path.join(cacheDir, `${key}.${alpha ? 'png' : 'jpg'}`);
   if (fs.existsSync(out)) return out;
 
   await fs.promises.mkdir(cacheDir, { recursive: true });
   const attempt = (at: number) =>
     runProcess(FFMPEG_BIN, [
       '-v', 'error',
-      '-ss', String(at),
+      // Sin -ss en 0: con imágenes fijas (jpg) el seek descarta el único cuadro.
+      ...(at > 0 ? ['-ss', String(at)] : []),
       '-i', filePath,
       '-frames:v', '1',
       '-vf', 'scale=320:-2',
-      '-q:v', '5',
+      ...(alpha ? [] : ['-q:v', '5']),
       '-y', out,
     ]);
 

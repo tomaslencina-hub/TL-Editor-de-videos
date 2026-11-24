@@ -10,10 +10,12 @@ import {
   clipDuration,
   clipEnd,
   clipSpeed,
+  initialClipDuration,
   nextTrackName,
   sourceTime,
   type Clip,
   type Id,
+  type Marker,
   type MediaSource,
   type Project,
   type ProjectSettings,
@@ -127,7 +129,8 @@ export function trimLimits(project: Project, clipId: Id, edge: TrimEdge): TrimLi
   if (!ref) return null;
   const { clip, track } = ref;
   const media = findMedia(project, clip.sourceId);
-  const sourceDuration = clip.text ? Number.POSITIVE_INFINITY : (media?.duration ?? clip.outPoint);
+  // Texto e imágenes no tienen un final de material: se pueden estirar sin límite.
+  const sourceDuration = clip.text || media?.kind === 'image' ? Number.POSITIVE_INFINITY : (media?.duration ?? clip.outPoint);
   const sp = clipSpeed(clip);
   const minDur = 1 / project.settings.fps;
   const others = track.clips.filter((c) => c.id !== clipId);
@@ -186,6 +189,95 @@ export function deleteClips(project: Project, clipIds: Id[]): Project {
       t.clips.some((c) => ids.has(c.id)) ? { ...t, clips: t.clips.filter((c) => !ids.has(c.id)) } : t,
     ),
   };
+}
+
+/**
+ * Borrado "ripple": quita los clips y corre hacia la izquierda lo que viene después en su pista,
+ * cerrando el hueco (no toca las otras pistas).
+ */
+export function rippleDelete(project: Project, clipIds: Id[]): Project {
+  const ids = new Set(clipIds);
+  return {
+    ...project,
+    tracks: project.tracks.map((t) => {
+      const removed = t.clips.filter((c) => ids.has(c.id)).sort((a, b) => a.start - b.start);
+      if (!removed.length || t.locked) return t;
+      const kept = t.clips.filter((c) => !ids.has(c.id));
+      return {
+        ...t,
+        clips: kept.map((c) => {
+          // Cuánto tiempo borrado hay antes de este clip.
+          const shift = removed.filter((r) => clipEnd(r) <= c.start + EPS).reduce((acc, r) => acc + clipDuration(r), 0);
+          return shift > 0 ? { ...c, start: Math.max(0, c.start - shift) } : c;
+        }),
+      };
+    }),
+  };
+}
+
+// ---------------------------------------------------------------------------- portapapeles
+
+/** Clips copiados: posición relativa al primero y pista de origen. */
+export interface ClipboardData {
+  items: { trackId: Id; trackKind: TrackKind; offset: number; clip: Clip }[];
+}
+
+export function copyClips(project: Project, clipIds: Id[]): ClipboardData | null {
+  const refs = clipIds.map((id) => findClip(project, id)).filter((r): r is ClipRef => !!r);
+  if (!refs.length) return null;
+  const first = Math.min(...refs.map((r) => r.clip.start));
+  return {
+    items: refs.map((r) => ({ trackId: r.track.id, trackKind: r.track.kind, offset: r.clip.start - first, clip: r.clip })),
+  };
+}
+
+/**
+ * Pega en `at`: cada clip vuelve a su pista (o a la primera del mismo tipo si ya no existe), en modo
+ * sobrescritura. Devuelve los ids nuevos para seleccionarlos.
+ */
+export function pasteClips(project: Project, data: ClipboardData, at: number): { project: Project; ids: Id[] } {
+  let p = project;
+  const ids: Id[] = [];
+  for (const item of data.items) {
+    const track =
+      p.tracks.find((t) => t.id === item.trackId && !t.locked) ?? p.tracks.find((t) => t.kind === item.trackKind && !t.locked);
+    if (!track) continue;
+    const clip: Clip = { ...item.clip, id: newId('clip'), start: Math.max(0, at + item.offset) };
+    p = insertClip(p, track.id, clip);
+    ids.push(clip.id);
+  }
+  return { project: p, ids };
+}
+
+// ---------------------------------------------------------------------------- marcadores y pistas
+
+const MARKER_COLORS = ['#ffd84d', '#19c3b0', '#ff4dd2', '#4d9bff', '#ff8a3d'];
+
+export function addMarker(project: Project, time: number): { project: Project; marker: Marker } {
+  const markers = project.markers ?? [];
+  const existing = markers.find((m) => Math.abs(m.time - time) < 1e-3);
+  if (existing) return { project, marker: existing };
+  const marker: Marker = {
+    id: newId('marker'),
+    time,
+    label: `Marcador ${markers.length + 1}`,
+    color: MARKER_COLORS[markers.length % MARKER_COLORS.length],
+  };
+  return { project: { ...project, markers: [...markers, marker].sort((a, b) => a.time - b.time) }, marker };
+}
+
+export function removeMarker(project: Project, id: Id): Project {
+  return { ...project, markers: (project.markers ?? []).filter((m) => m.id !== id) };
+}
+
+/** Mueve una pista una posición arriba/abajo, sin mezclar las de video con las de audio. */
+export function moveTrack(project: Project, trackId: Id, direction: -1 | 1): Project {
+  const i = project.tracks.findIndex((t) => t.id === trackId);
+  const j = i + direction;
+  if (i < 0 || j < 0 || j >= project.tracks.length || project.tracks[j].kind !== project.tracks[i].kind) return project;
+  const tracks = [...project.tracks];
+  [tracks[i], tracks[j]] = [tracks[j], tracks[i]];
+  return { ...project, tracks };
 }
 
 export function addMedia(project: Project, media: MediaSource[]): Project {
@@ -418,7 +510,7 @@ export function setClipText(project: Project, clipId: Id, patch: Partial<TextCon
 
 /** Crea un clip a partir de un medio completo. */
 export function clipFromMedia(media: MediaSource, start: number): Clip {
-  return { id: newId('clip'), sourceId: media.id, start, inPoint: 0, outPoint: media.duration };
+  return { id: newId('clip'), sourceId: media.id, start, inPoint: 0, outPoint: initialClipDuration(media) };
 }
 
 export { clipDuration, clipEnd };
