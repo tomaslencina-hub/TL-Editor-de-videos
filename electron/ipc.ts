@@ -1,10 +1,11 @@
 import { app, dialog, ipcMain, shell, type BrowserWindow } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
-import type { OpenProjectResult } from '../shared/ipc-contract';
+import type { OpenProjectResult, SubtitleRequest, SubtitleSegment } from '../shared/ipc-contract';
 import { validateProject, type Project } from '../shared/model';
 import { ExportManager } from './ffmpeg/export';
 import { makeIntermediate } from './ffmpeg/intermediate';
+import { SubtitleTranscriber, toSrt } from './ffmpeg/transcribe';
 import { probe } from './ffmpeg/probe';
 import { thumbnail } from './ffmpeg/thumbnail';
 import { waveform } from './ffmpeg/waveform';
@@ -83,6 +84,27 @@ export function registerIpc(getWindow: () => BrowserWindow | null): void {
     const error = validateProject(data);
     if (error) throw new Error(error);
     return { path: filePath, project: data as Project };
+  });
+
+  const subtitles = new SubtitleTranscriber(path.join(app.getPath('userData'), 'models'));
+  ipcMain.handle('subtitles:models', () => subtitles.listModels());
+  ipcMain.handle('subtitles:transcribe', (e, project: Project, req: SubtitleRequest) =>
+    subtitles.run(project, req, (p) => {
+      if (!e.sender.isDestroyed()) e.sender.send('subtitles:progress', p);
+    }),
+  );
+  ipcMain.handle('subtitles:cancel', () => subtitles.cancel());
+  ipcMain.handle('subtitles:save-srt', async (_e, segments: SubtitleSegment[], suggestedName: string) => {
+    const win = getWindow();
+    const opts: Electron.SaveDialogOptions = {
+      title: 'Guardar subtítulos',
+      defaultPath: `${suggestedName || 'subtitulos'}.srt`,
+      filters: [{ name: 'Subtítulos SubRip', extensions: ['srt'] }],
+    };
+    const res = win ? await dialog.showSaveDialog(win, opts) : await dialog.showSaveDialog(opts);
+    if (res.canceled || !res.filePath) return null;
+    await fs.promises.writeFile(res.filePath, toSrt(segments), 'utf8');
+    return res.filePath;
   });
 
   ipcMain.handle('export:pick-path', async (_e, suggestedName: string) => {

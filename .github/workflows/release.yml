@@ -42,10 +42,10 @@ jobs:
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "Versión: $VERSION"
 
-      - name: Descargar FFmpeg (se incluye en el instalador)
+      - name: Descargar FFmpeg full (incluye Whisper para subtítulos; va dentro del instalador)
         shell: pwsh
         run: |
-          Invoke-WebRequest -Uri https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip -OutFile ffmpeg.zip
+          Invoke-WebRequest -Uri https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-full.zip -OutFile ffmpeg.zip
           Expand-Archive ffmpeg.zip -DestinationPath ffmpeg-tmp
           $bin = Get-ChildItem ffmpeg-tmp -Recurse -Filter ffmpeg.exe | Select-Object -First 1
           $root = $bin.Directory.Parent.FullName
@@ -53,6 +53,9 @@ jobs:
           Copy-Item "$($bin.Directory.FullName)/ffmpeg.exe", "$($bin.Directory.FullName)/ffprobe.exe" vendor/ffmpeg/
           Copy-Item "$root/LICENSE" vendor/ffmpeg/LICENSE-ffmpeg.txt -ErrorAction SilentlyContinue
           & vendor/ffmpeg/ffmpeg.exe -hide_banner -version | Select-Object -First 1
+          # Los subtítulos automáticos necesitan el filtro whisper: si falta, se corta la publicación.
+          $filters = & vendor/ffmpeg/ffmpeg.exe -hide_banner -filters
+          if (-not ($filters -match ' whisper ')) { Write-Error 'El FFmpeg descargado no incluye el filtro whisper'; exit 1 }
 
       - name: Chequeo de tipos
         run: npm run typecheck

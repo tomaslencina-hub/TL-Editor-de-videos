@@ -35,7 +35,7 @@ Flujo: trabajar en `dev` → `git checkout test && git merge dev && git push` �
 - El canal sale de la versión instalada: una estable solo recibe estables; una beta recibe betas y estables más nuevas.
 - `N` es el número de ejecución del workflow (`.github/workflows/release.yml`), así cada publicación es más nueva.
 - Para cambiar la versión mayor/menor, editar `version` en `package.json` (p. ej. `0.2.0` → las siguientes serán `0.2.N`).
-- El instalador incluye FFmpeg (build *essentials* de gyan.dev, licencia GPL): el usuario no necesita instalar nada.
+- El instalador incluye FFmpeg (build *full* de gyan.dev, con Whisper; licencia GPL): el usuario no necesita instalar nada.
 - `npm run dist` genera el instalador localmente en `release/` (requiere `vendor/ffmpeg/ffmpeg.exe` y `ffprobe.exe`).
 - El instalador no está firmado: Windows SmartScreen muestra un aviso la primera vez ("Más información → Ejecutar de todas formas").
 
@@ -61,10 +61,14 @@ Flujo: trabajar en `dev` → `git checkout test && git merge dev && git push` �
    el playhead sobre el video (en su propia pista si hace falta). En *Propiedades*: intensidad, tamaño, velocidad, color,
    multicolor y *Variar* (otra distribución). También admiten transformación, keyframes y transiciones.
    Se dibujan a partir del tiempo con aleatorios fijos: vista previa y exportación salen idénticas.
-8. **Edición**: Ctrl/Shift + clic para seleccionar varios clips; `Ctrl+C`/`Ctrl+X`/`Ctrl+V` (pega en el playhead),
+8. **Subtítulos automáticos** (botón *💬 Subtítulos* en la timeline): transcribe lo que se escucha (toda la timeline o
+   el clip seleccionado) con Whisper, sin internet, y crea una pista "Subtítulos" con un texto por frase en el estilo
+   elegido (clásico, con fondo o redes). La primera vez baja el modelo (base 148 MB, small 488 MB, large-v3-turbo 1,6 GB)
+   a la carpeta de datos de la app. También se pueden guardar como `.srt`.
+9. **Edición**: Ctrl/Shift + clic para seleccionar varios clips; `Ctrl+C`/`Ctrl+X`/`Ctrl+V` (pega en el playhead),
    `Ctrl+D` duplicar, `Shift+Supr` borrar cerrando el hueco, `M` marcador (clic derecho sobre él para quitarlo),
    ▲/▼ en el encabezado para reordenar pistas.
-9. **Atajos**: `Espacio` play/pausa, `←`/`→` cuadro a cuadro, `Ctrl+Z`/`Ctrl+Y`, `Ctrl+S` guardar, `Ctrl+E` exportar.
+10. **Atajos**: `Espacio` play/pausa, `←`/`→` cuadro a cuadro, `Ctrl+Z`/`Ctrl+Y`, `Ctrl+S` guardar, `Ctrl+E` exportar.
 
 ## Motor de render
 

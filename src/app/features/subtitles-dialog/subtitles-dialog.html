@@ -1,0 +1,95 @@
+@if (subs.open()) {
+  <div class="backdrop" (click)="subs.close()">
+    <div class="dialog" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+      <h2>💬 Subtítulos automáticos</h2>
+      <p class="muted">Se transcribe lo que se escucha en la timeline y se crea una pista con un texto por frase. Funciona sin internet (solo la primera vez se baja el modelo).</p>
+
+      @let o = subs.options();
+      <dl class="summary form">
+        <dt>Qué transcribir</dt>
+        <dd>
+          <select [disabled]="subs.status() === 'running'" (change)="subs.patch({ range: $any($event.target).value })">
+            <option value="all" [selected]="o.range === 'all'">Toda la timeline</option>
+            <option value="selection" [selected]="o.range === 'selection'" [disabled]="!sel.clip()">Solo el clip seleccionado</option>
+          </select>
+        </dd>
+        <dt>Idioma</dt>
+        <dd>
+          <select [disabled]="subs.status() === 'running'" (change)="subs.patch({ language: $any($event.target).value })">
+            @for (l of languages; track l.code) {
+              <option [value]="l.code" [selected]="l.code === o.language">{{ l.label }}</option>
+            }
+          </select>
+        </dd>
+        <dt>Calidad</dt>
+        <dd>
+          <select [disabled]="subs.status() === 'running'" (change)="subs.patch({ model: $any($event.target).value })">
+            @for (m of subs.models(); track m.id) {
+              <option [value]="m.id" [selected]="m.id === o.model">
+                {{ m.label }} — {{ m.downloaded ? 'descargado' : m.sizeMB + ' MB' }}
+              </option>
+            }
+          </select>
+        </dd>
+        <dt>Estilo</dt>
+        <dd>
+          <select [disabled]="subs.status() === 'running'" (change)="subs.patch({ style: $any($event.target).value })">
+            @for (s of styles; track s) {
+              <option [value]="s" [selected]="s === o.style">{{ styleLabels[s] }}</option>
+            }
+          </select>
+        </dd>
+        <dt>Largo de línea</dt>
+        <dd>
+          <select [disabled]="subs.status() === 'running'" (change)="subs.patch({ maxChars: +$any($event.target).value })">
+            <option value="24" [selected]="o.maxChars === 24">Corto (redes)</option>
+            <option value="42" [selected]="o.maxChars === 42">Normal</option>
+            <option value="64" [selected]="o.maxChars === 64">Largo</option>
+          </select>
+        </dd>
+      </dl>
+
+      @if (selectedModel(); as m) {
+        @if (!m.downloaded && subs.status() !== 'running') {
+          <p class="muted">La primera vez se descarga el modelo ({{ m.sizeMB }} MB).</p>
+        }
+      }
+
+      @switch (subs.status()) {
+        @case ('running') {
+          <div class="progress">
+            <div class="bar"><div class="fill" [style.width.%]="percent()"></div></div>
+            <div class="progress-info">
+              <span>{{ percent() }}% · {{ subs.phase() === 'download' ? 'Descargando modelo' : 'Transcribiendo' }}</span>
+            </div>
+          </div>
+        }
+        @case ('done') {
+          <p class="ok">✔ {{ subs.message() }}</p>
+        }
+        @case ('cancelled') {
+          <p class="muted">Cancelado.</p>
+        }
+        @case ('error') {
+          <pre class="error">{{ subs.message() }}</pre>
+        }
+      }
+
+      <div class="actions">
+        @switch (subs.status()) {
+          @case ('running') {
+            <button (click)="subs.cancel()">Cancelar</button>
+          }
+          @case ('done') {
+            <button (click)="subs.saveSrt()" title="Archivo de subtítulos para YouTube u otros reproductores">Guardar .srt</button>
+            <button class="primary" (click)="subs.close()">Listo</button>
+          }
+          @default {
+            <button (click)="subs.close()">Cerrar</button>
+            <button class="primary" (click)="subs.start()">Generar subtítulos</button>
+          }
+        }
+      </div>
+    </div>
+  </div>
+}

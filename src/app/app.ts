@@ -5,6 +5,7 @@ import { PlaybackService } from './core/playback/playback.service';
 import { ProjectStore } from './core/state/project-store';
 import { TimelineViewService } from './features/timeline/timeline-view.service';
 import { ExportDialog } from './features/export-dialog/export-dialog';
+import { SubtitlesDialog } from './features/subtitles-dialog/subtitles-dialog';
 import { Library } from './features/library/library';
 import { Preview } from './features/preview/preview';
 import { Timeline } from './features/timeline/timeline';
@@ -13,7 +14,7 @@ import { Toolbar } from './features/toolbar/toolbar';
 
 @Component({
   selector: 'app-root',
-  imports: [Toolbar, Library, Preview, Timeline, ExportDialog, Toasts],
+  imports: [Toolbar, Library, Preview, Timeline, ExportDialog, SubtitlesDialog, Toasts],
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })

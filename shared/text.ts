@@ -192,3 +192,57 @@ export function textAnimation(text: TextContent, clipTime: number, clipDuration:
   if (text.animOut !== 'none') apply(state, text.animOut, (clipDuration - clipTime) / d);
   return state;
 }
+
+// ---------------------------------------------------------------------------- subtítulos
+
+export const SUBTITLE_STYLES = ['classic', 'boxed', 'social'] as const;
+export type SubtitleStyle = (typeof SUBTITLE_STYLES)[number];
+
+export const SUBTITLE_STYLE_LABELS: Record<SubtitleStyle, string> = {
+  classic: 'Clásico (blanco con contorno)',
+  boxed: 'Con fondo',
+  social: 'Redes (grande y amarillo)',
+};
+
+/** Estilo de texto + posición vertical (fracción del cuadro) de cada estilo de subtítulo. */
+export function subtitleText(style: SubtitleStyle, text: string): { text: TextContent; y: number } {
+  const base = { ...DEFAULT_TEXT, text, animIn: 'none' as TextAnimation, animOut: 'none' as TextAnimation, animDuration: 0.15 };
+  switch (style) {
+    case 'boxed':
+      return {
+        y: 0.38,
+        text: {
+          ...base,
+          fontSize: 50,
+          bold: false,
+          shadow: { ...DEFAULT_TEXT.shadow, enabled: false },
+          background: { enabled: true, color: '#000000', opacity: 0.65, padding: 18, radius: 8 },
+        },
+      };
+    case 'social':
+      return {
+        y: 0.22,
+        text: {
+          ...base,
+          fontFamily: 'Impact',
+          fontSize: 84,
+          bold: false,
+          color: '#ffe14d',
+          stroke: { enabled: true, color: '#000000', width: 10 },
+          shadow: { ...DEFAULT_TEXT.shadow, enabled: false },
+          animIn: 'pop',
+          animDuration: 0.18,
+        },
+      };
+    default:
+      return {
+        y: 0.38,
+        text: {
+          ...base,
+          fontSize: 54,
+          stroke: { enabled: true, color: '#000000', width: 6 },
+          shadow: { ...DEFAULT_TEXT.shadow, enabled: true, blur: 8 },
+        },
+      };
+  }
+}

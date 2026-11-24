@@ -25,7 +25,7 @@ import {
 } from '../../../../shared/model';
 import { shiftKeyframes, splitKeyframes } from '../../../../shared/animation';
 import { DEFAULT_OVERLAY_DURATION, type OverlayEffect } from '../../../../shared/effects';
-import type { TextContent } from '../../../../shared/text';
+import { subtitleText, type SubtitleStyle, type TextContent } from '../../../../shared/text';
 import { ADJACENT_EPS } from '../../../../shared/transitions';
 
 export const EPS = 1e-6;
@@ -518,6 +518,32 @@ function nextNamed(project: Project, base: string): string {
   let n = 2;
   while (used.has(`${base} ${n}`)) n++;
   return `${base} ${n}`;
+}
+
+/**
+ * Crea una pista "Subtítulos" (arriba de todo) con un clip de texto por frase.
+ * Las frases no se superponen: si una termina después de que empieza la siguiente, se recorta.
+ */
+export function addSubtitleTrack(
+  project: Project,
+  segments: { start: number; end: number; text: string }[],
+  style: SubtitleStyle,
+): { project: Project; trackId: Id } {
+  const added = addTrack(project, 'video', nextNamed(project, 'Subtítulos'));
+  const sorted = [...segments].sort((a, b) => a.start - b.start);
+  const clips: Clip[] = [];
+  sorted.forEach((seg, i) => {
+    const next = sorted[i + 1];
+    const end = Math.min(seg.end, next ? next.start : seg.end);
+    const dur = Math.max(0.3, end - seg.start);
+    const { text, y } = subtitleText(style, seg.text);
+    clips.push({ id: newId('clip'), sourceId: '', start: seg.start, inPoint: 0, outPoint: dur, text, transform: { y } });
+  });
+  const p = added.project;
+  return {
+    project: { ...p, tracks: p.tracks.map((t) => (t.id === added.track.id ? { ...t, clips: sortClips(clips) } : t)) },
+    trackId: added.track.id,
+  };
 }
 
 export function setClipOverlay(project: Project, clipId: Id, patch: Partial<OverlayEffect>): Project {

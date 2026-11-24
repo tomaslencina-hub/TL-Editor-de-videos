@@ -1,6 +1,6 @@
 import type { AnimatableProp, Clip, Id, MediaSource, Project, ProjectSettings, Track, TrackKind, Transition } from '../../../../shared/model';
 import type { OverlayEffect } from '../../../../shared/effects';
-import type { TextContent } from '../../../../shared/text';
+import type { SubtitleStyle, TextContent } from '../../../../shared/text';
 import * as props from '../timeline/clip-props';
 import * as ops from '../timeline/timeline-ops';
 
@@ -85,6 +85,9 @@ export const Commands = {
 
   updateOverlay: (clipId: Id, patch: Partial<OverlayEffect>) =>
     cmd('Editar efecto', (p) => ops.setClipOverlay(p, clipId, patch)),
+
+  addSubtitles: (segments: { start: number; end: number; text: string }[], style: SubtitleStyle) =>
+    cmd('Subtítulos automáticos', (p) => ops.addSubtitleTrack(p, segments, style).project),
 
   updateText: (clipId: Id, patch: Partial<TextContent>) => cmd('Editar texto', (p) => ops.setClipText(p, clipId, patch)),
 

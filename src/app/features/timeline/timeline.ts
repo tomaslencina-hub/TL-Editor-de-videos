@@ -46,6 +46,7 @@ import {
 import { AutofocusDirective } from '../../core/ui/autofocus.directive';
 import { OVERLAY_ICONS, OVERLAY_LABELS } from '../../../../shared/effects';
 import { keyframeTimes } from '../../core/timeline/clip-props';
+import { SubtitlesService } from '../../core/subtitles/subtitles.service';
 import { MEDIA_DRAG_TYPE, MediaDragService, TRANSITION_DRAG_TYPE } from '../../core/ui/media-drag.service';
 import { TimelineRuler } from './ruler';
 import { MAX_PPS, MIN_PPS, TimelineViewService } from './timeline-view.service';
@@ -160,6 +161,7 @@ export class Timeline implements AfterViewInit, OnDestroy {
 
   // ---- Transición seleccionada (inspector) ----
   protected readonly keyframeTimes = keyframeTimes;
+  protected readonly subtitles = inject(SubtitlesService);
   protected readonly transitionTypes = TRANSITION_TYPES;
   protected readonly transitionLabels = TRANSITION_LABELS;
   protected readonly selectedTransitionInfo = computed(() => {

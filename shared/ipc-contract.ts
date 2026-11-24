@@ -37,6 +37,39 @@ export type ExportResult =
   | { status: 'cancelled' }
   | { status: 'error'; message: string };
 
+// ---- Subtítulos automáticos (Whisper) ----
+export type WhisperModelId = 'base' | 'small' | 'large-v3-turbo';
+
+export interface SubtitleModelInfo {
+  id: WhisperModelId;
+  label: string;
+  sizeMB: number;
+  downloaded: boolean;
+}
+
+export interface SubtitleRequest {
+  model: WhisperModelId;
+  /** Código ISO ('es', 'en', 'pt'…) o 'auto'. */
+  language: string;
+  /** Tramo de la timeline a transcribir (s). Sin valores = toda la timeline. */
+  start?: number;
+  end?: number;
+  /** Largo máximo aproximado de cada subtítulo (caracteres). */
+  maxChars: number;
+}
+
+/** Un subtítulo, en tiempo de timeline (s). */
+export interface SubtitleSegment {
+  start: number;
+  end: number;
+  text: string;
+}
+
+export interface SubtitleProgress {
+  phase: 'download' | 'transcribe';
+  ratio: number;
+}
+
 /** Estado de la actualización automática. */
 export interface UpdateStatus {
   state: 'idle' | 'disabled' | 'checking' | 'up-to-date' | 'downloading' | 'ready' | 'error';
@@ -94,6 +127,14 @@ export interface TlApi {
 
   onMenuAction(cb: (action: MenuAction) => void): () => void;
 
+  listSubtitleModels(): Promise<SubtitleModelInfo[]>;
+  /** Transcribe el audio de la timeline (lo que se escucha) y devuelve los subtítulos. */
+  transcribe(project: Project, req: SubtitleRequest): Promise<SubtitleSegment[]>;
+  cancelTranscription(): Promise<void>;
+  onSubtitleProgress(cb: (p: SubtitleProgress) => void): () => void;
+  /** Guarda un archivo .srt (abre el diálogo). Devuelve la ruta o null si se cancela. */
+  saveSrt(segments: SubtitleSegment[], suggestedName: string): Promise<string | null>;
+
   getUpdateStatus(): Promise<UpdateStatus>;
   onUpdateStatus(cb: (status: UpdateStatus) => void): () => void;
   /** Cierra la app, instala la versión descargada y la vuelve a abrir. */
@@ -120,6 +161,11 @@ export type IpcChannel =
   | 'export:progress'
   | 'menu:action'
   | 'shell:show-item'
+  | 'subtitles:models'
+  | 'subtitles:transcribe'
+  | 'subtitles:cancel'
+  | 'subtitles:progress'
+  | 'subtitles:save-srt'
   | 'update:status'
   | 'update:get-status'
   | 'update:install'

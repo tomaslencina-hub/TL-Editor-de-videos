@@ -3,7 +3,7 @@
  * Solo puede importar 'electron' en runtime; de /shared se importan únicamente tipos.
  */
 import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from 'electron';
-import type { ExportProgress, IpcChannel, MenuAction, TlApi, UpdateStatus } from '../shared/ipc-contract';
+import type { ExportProgress, IpcChannel, MenuAction, SubtitleProgress, TlApi, UpdateStatus } from '../shared/ipc-contract';
 
 const invoke = <T>(channel: IpcChannel, ...args: unknown[]): Promise<T> =>
   ipcRenderer.invoke(channel, ...args) as Promise<T>;
@@ -36,6 +36,12 @@ const api: TlApi = {
   onExportProgress: (cb) => subscribe<ExportProgress>('export:progress', cb),
 
   onMenuAction: (cb) => subscribe<MenuAction>('menu:action', cb),
+
+  listSubtitleModels: () => invoke('subtitles:models'),
+  transcribe: (project, req) => invoke('subtitles:transcribe', project, req),
+  cancelTranscription: () => invoke('subtitles:cancel'),
+  onSubtitleProgress: (cb) => subscribe<SubtitleProgress>('subtitles:progress', cb),
+  saveSrt: (segments, name) => invoke('subtitles:save-srt', segments, name),
 
   getUpdateStatus: () => invoke('update:get-status'),
   onUpdateStatus: (cb) => subscribe<UpdateStatus>('update:status', cb),
