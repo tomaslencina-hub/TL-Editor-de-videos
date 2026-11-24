@@ -91,8 +91,7 @@
       {
         "provider": "github",
         "owner": "tomaslencina-hub",
-        "repo": "TL-Editor-de-videos",
-        "releaseType": "draft"
+        "repo": "TL-Editor-de-videos"
       }
     ]
   }

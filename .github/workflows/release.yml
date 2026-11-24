@@ -60,34 +60,44 @@ jobs:
       - name: Compilar
         run: npm run build
 
-      # electron-builder sube todo a una release en BORRADOR (GitHub no deja agregar archivos a una
-      # release que se crea ya publicada con un tag nuevo); el paso siguiente la publica.
-      - name: Empaquetar y subir (borrador)
+      # electron-builder solo genera los archivos; la subida la hace gh (sube todo y recién después publica).
+      - name: Empaquetar
         shell: bash
         run: |
           set -o pipefail
-          if ! npx electron-builder --win --publish always 2>&1 | tee builder.log; then
-            # Muestra el error como anotación (visible en el resumen del workflow).
-            grep -iE "⨯|error|failed|status|message" builder.log | tail -n 10 | while IFS= read -r line; do echo "::error::$line"; done
+          if ! npx electron-builder --win --publish never 2>&1 | tee builder.log; then
+            grep -iE "⨯|error|failed" builder.log | tail -n 10 | while IFS= read -r line; do echo "::error::$line"; done
             exit 1
           fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ls -la release
+          for f in release/*.exe release/*.blockmap release/latest.yml release/beta.yml; do
+            [ -f "$f" ] && echo "::notice::Generado $(basename "$f") ($(( $(stat -c %s "$f") / 1048576 )) MB)"
+          done
+          true
 
       - name: Publicar la release
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          REPO="${{ github.repository }}"
-          # Con el token del workflow el listado incluye borradores.
-          ID=$(gh api "repos/$REPO/releases?per_page=30" --jq ".[] | select(.tag_name == \"v$VERSION\") | .id" | head -n 1)
-          if [ -z "$ID" ]; then
-            echo "::error::No se encontró la release borrador v$VERSION"
-            exit 1
-          fi
-          if [ "${{ github.ref_name }}" = "test" ]; then PRE=true; LATEST=false; else PRE=false; LATEST=true; fi
-          gh api -X PATCH "repos/$REPO/releases/$ID" \
-            -F draft=false -F prerelease=$PRE -f make_latest=$LATEST -f target_commitish="$GITHUB_SHA" \
-            --jq '"Publicada \(.tag_name) (prerelease=\(.prerelease), draft=\(.draft)) con: \([.assets[].name] | join(", "))"' |
+          FILES=$(ls release/*.exe release/*.blockmap release/latest.yml release/beta.yml 2>/dev/null)
+          if [ "${{ github.ref_name }}" = "test" ]; then FLAGS="--prerelease --latest=false"; else FLAGS="--latest"; fi
+          # shellcheck disable=SC2086
+          gh release create "v$VERSION" $FILES --target "$GITHUB_SHA" --title "SHOTON $VERSION" \
+            --notes "Versión $VERSION publicada desde la rama ${{ github.ref_name }} (${GITHUB_SHA::7})." $FLAGS
+          gh release view "v$VERSION" --json tagName,isPrerelease,assets \
+            --jq '"Publicada \(.tagName) (prerelease=\(.isPrerelease)) con: \([.assets[].name] | join(", "))"' |
             while IFS= read -r line; do echo "::notice::$line"; done
+
+      # Releases sin archivo de actualización (.yml) son intentos fallidos: confunden al actualizador.
+      - name: Limpiar releases incompletas
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api "repos/${{ github.repository }}/releases?per_page=100" \
+            --jq ".[] | select(.tag_name != \"v$VERSION\") | select([.assets[].name | endswith(\".yml\")] | any | not) | .tag_name" |
+          while IFS= read -r tag; do
+            echo "::notice::Borrando release incompleta $tag"
+            gh release delete "$tag" --yes --cleanup-tag
+          done
