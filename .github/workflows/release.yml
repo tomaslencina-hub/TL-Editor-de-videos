@@ -45,8 +45,10 @@ jobs:
       - name: Descargar FFmpeg full (incluye Whisper para subtítulos; va dentro del instalador)
         shell: pwsh
         run: |
-          Invoke-WebRequest -Uri https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-full.zip -OutFile ffmpeg.zip
-          Expand-Archive ffmpeg.zip -DestinationPath ffmpeg-tmp
+          # El build "full" solo se publica en .7z (los runners de Windows traen 7-Zip).
+          Invoke-WebRequest -Uri https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-full.7z -OutFile ffmpeg.7z
+          7z x ffmpeg.7z -offmpeg-tmp -y | Out-Null
+          if ($LASTEXITCODE -ne 0) { Write-Error 'No se pudo descomprimir FFmpeg'; exit 1 }
           $bin = Get-ChildItem ffmpeg-tmp -Recurse -Filter ffmpeg.exe | Select-Object -First 1
           $root = $bin.Directory.Parent.FullName
           New-Item -ItemType Directory -Force vendor/ffmpeg | Out-Null
