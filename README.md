@@ -55,7 +55,12 @@ Flujo: trabajar en `dev` → `git checkout test && git merge dev && git push` �
 4. **Texto**: pestaña *Texto* → elegí un estilo; se agrega en el playhead. Editalo en *Propiedades*
    (fuente, tamaño, color, contorno, sombra, fondo, animaciones de entrada/salida).
 5. **Transiciones**: pestaña *Transiciones* (18 tipos) → arrastrá al borde de un clip. Clic en la marca ✦ para editarla.
-6. **Atajos**: `Espacio` play/pausa, `←`/`→` cuadro a cuadro, `Ctrl+Z`/`Ctrl+Y`, `Ctrl+S` guardar, `Ctrl+E` exportar.
+6. **Imágenes y stickers** (png, jpg, webp, bmp, gif): se importan igual que los videos; entran con 5 s y se estiran
+   sin límite. La transparencia de los PNG se respeta.
+7. **Edición**: Ctrl/Shift + clic para seleccionar varios clips; `Ctrl+C`/`Ctrl+X`/`Ctrl+V` (pega en el playhead),
+   `Ctrl+D` duplicar, `Shift+Supr` borrar cerrando el hueco, `M` marcador (clic derecho sobre él para quitarlo),
+   ▲/▼ en el encabezado para reordenar pistas.
+8. **Atajos**: `Espacio` play/pausa, `←`/`→` cuadro a cuadro, `Ctrl+Z`/`Ctrl+Y`, `Ctrl+S` guardar, `Ctrl+E` exportar.
 
 ## Motor de render
 
@@ -113,9 +118,9 @@ Un motor WebCodecs implementaría la misma interfaz dibujando en el `canvas` de 
 
 ## Limitaciones conocidas
 
-- Las pistas no se pueden reordenar todavía.
-- Sin imágenes fijas/stickers, LUTs, recorte (crop) ni máscaras todavía.
-- Edición: selección de un solo clip; sin copiar/pegar, ripple delete ni marcadores.
+- Sin LUTs, recorte (crop) ni máscaras todavía.
+- Con varios clips seleccionados, arrastrar mueve solo el clip tomado (borrar/copiar/duplicar sí actúan sobre todos).
+- Los GIF animados se toman como imagen fija (primer cuadro).
 - La vista previa usa `<video>`: pequeños cortes al cambiar de archivo y sincronía aproximada (±250 ms);
   la exportación sí es exacta cuadro a cuadro.
 - Las rutas del `.vproj` son absolutas. Sin instalador todavía.
