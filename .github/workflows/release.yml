@@ -70,7 +70,7 @@ jobs:
             exit 1
           fi
           ls -la release
-          for f in release/*.exe release/*.blockmap release/latest.yml release/beta.yml; do
+          for f in release/*.exe release/*.blockmap release/latest.yml; do
             [ -f "$f" ] && echo "::notice::Generado $(basename "$f") ($(( $(stat -c %s "$f") / 1048576 )) MB)"
           done
           true
@@ -80,10 +80,14 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          FILES=$(ls release/*.exe release/*.blockmap release/latest.yml release/beta.yml 2>/dev/null)
+          # La app busca "<canal>.yml": las betas leen beta.yml y las estables latest.yml.
+          # Se suben los dos (mismo contenido) para que una beta también pueda pasar a una estable.
+          cp release/latest.yml release/beta.yml
+          shopt -s nullglob
+          FILES=(release/*.exe release/*.blockmap release/latest.yml release/beta.yml)
           if [ "${{ github.ref_name }}" = "test" ]; then FLAGS="--prerelease --latest=false"; else FLAGS="--latest"; fi
           # shellcheck disable=SC2086
-          gh release create "v$VERSION" $FILES --target "$GITHUB_SHA" --title "SHOTON $VERSION" \
+          gh release create "v$VERSION" "${FILES[@]}" --target "$GITHUB_SHA" --title "SHOTON $VERSION" \
             --notes "Versión $VERSION publicada desde la rama ${{ github.ref_name }} (${GITHUB_SHA::7})." $FLAGS
           gh release view "v$VERSION" --json tagName,isPrerelease,assets \
             --jq '"Publicada \(.tagName) (prerelease=\(.isPrerelease)) con: \([.assets[].name] | join(", "))"' |
