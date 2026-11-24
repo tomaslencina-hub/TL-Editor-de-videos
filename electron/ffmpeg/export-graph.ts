@@ -72,7 +72,7 @@ export function buildAudioPlan(project: Project, inputOffset = 0): AudioPlan {
 
   const audioClip = (clip: Clip, transitions: ResolvedTransition[]): { l: string; len: number } => {
     const media = mediaById.get(clip.sourceId);
-    if (!media && !clip.text) throw new Error(`El clip ${clip.id} referencia un medio inexistente (${clip.sourceId}).`);
+    if (!media && !clip.text && !clip.overlay) throw new Error(`El clip ${clip.id} referencia un medio inexistente (${clip.sourceId}).`);
     const ext = extensions.get(clip.id) ?? { head: 0, tail: 0 };
     const len = ext.head + clipDuration(clip) + ext.tail;
     let l: string;

@@ -10,6 +10,7 @@ import { hasKeyframeAt, keyframeTimes, KEYFRAME_EPS } from '../../core/timeline/
 import type { ClipAudioPatch } from '../../core/timeline/timeline-ops';
 import { formatTimecode } from '../../core/timeline/time';
 import { FONT_FAMILIES, TEXT_ANIMATION_LABELS, TEXT_ANIMATIONS, type TextContent } from '../../../../shared/text';
+import { OVERLAY_LABELS, type OverlayEffect } from '../../../../shared/effects';
 
 interface PropRow {
   prop: AnimatableProp;
@@ -56,6 +57,19 @@ export class PropertiesPanel {
   protected readonly animations = TEXT_ANIMATIONS;
   protected readonly animationLabels = TEXT_ANIMATION_LABELS;
   protected readonly text = computed(() => this.sel.clip()?.text ?? null);
+  protected readonly overlay = computed(() => this.sel.clip()?.overlay ?? null);
+  protected readonly overlayLabels = OVERLAY_LABELS;
+
+  protected setOverlay(patch: Partial<OverlayEffect>, mergeKey = 'fx'): void {
+    const clip = this.sel.clip();
+    if (!clip?.overlay || this.sel.track()?.locked) return;
+    this.store.dispatch(Commands.updateOverlay(clip.id, patch), { mergeKey: `${mergeKey}:${clip.id}` });
+  }
+
+  /** Nueva distribución aleatoria de partículas, mismo estilo. */
+  protected reshuffle(): void {
+    this.setOverlay({ seed: Math.floor(Math.random() * 1e6) }, 'fx-seed');
+  }
 
   /** Cambia el texto/estilo; los cambios continuos (tipeo, deslizadores) se agrupan en el historial. */
   protected setText(patch: Partial<TextContent>, mergeKey = 'text'): void {
@@ -102,7 +116,11 @@ export class PropertiesPanel {
     const clip = this.sel.clip();
     if (!clip) return null;
     const fps = this.store.settings().fps;
-    const name = clip.text ? 'Texto' : (this.sel.media()?.name ?? 'Clip');
+    const name = clip.overlay
+      ? `Efecto: ${OVERLAY_LABELS[clip.overlay.type]}`
+      : clip.text
+        ? 'Texto'
+        : (this.sel.media()?.name ?? 'Clip');
     return { name, start: formatTimecode(clip.start, fps), duration: formatTimecode(clipDuration(clip), fps) };
   });
 

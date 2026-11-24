@@ -24,6 +24,7 @@ import {
   type Transition,
 } from '../../../../shared/model';
 import { shiftKeyframes, splitKeyframes } from '../../../../shared/animation';
+import { DEFAULT_OVERLAY_DURATION, type OverlayEffect } from '../../../../shared/effects';
 import type { TextContent } from '../../../../shared/text';
 import { ADJACENT_EPS } from '../../../../shared/transitions';
 
@@ -130,7 +131,8 @@ export function trimLimits(project: Project, clipId: Id, edge: TrimEdge): TrimLi
   const { clip, track } = ref;
   const media = findMedia(project, clip.sourceId);
   // Texto e imágenes no tienen un final de material: se pueden estirar sin límite.
-  const sourceDuration = clip.text || media?.kind === 'image' ? Number.POSITIVE_INFINITY : (media?.duration ?? clip.outPoint);
+  const sourceDuration =
+    clip.text || clip.overlay || media?.kind === 'image' ? Number.POSITIVE_INFINITY : (media?.duration ?? clip.outPoint);
   const sp = clipSpeed(clip);
   const minDur = 1 / project.settings.fps;
   const others = track.clips.filter((c) => c.id !== clipId);
@@ -496,6 +498,36 @@ function nextTextTrackName(project: Project): string {
   let n = 2;
   while (used.has(`Texto ${n}`)) n++;
   return `Texto ${n}`;
+}
+
+/** Agrega un efecto animado en `start` (misma ubicación que los textos: pista libre más alta o una nueva). */
+export function addOverlayClip(project: Project, overlay: OverlayEffect, start: number): { project: Project; clip: Clip } {
+  const clip: Clip = { id: newId('clip'), sourceId: '', start, inPoint: 0, outPoint: DEFAULT_OVERLAY_DURATION, overlay };
+  const end = start + DEFAULT_OVERLAY_DURATION;
+  const free = project.tracks.find(
+    (t) => t.kind === 'video' && !t.locked && !t.clips.some((c) => c.start < end - EPS && clipEnd(c) > start + EPS),
+  );
+  if (free) return { project: insertClip(project, free.id, clip), clip };
+  const added = addTrack(project, 'video', nextNamed(project, 'Efectos'));
+  return { project: insertClip(added.project, added.track.id, clip), clip };
+}
+
+function nextNamed(project: Project, base: string): string {
+  const used = new Set(project.tracks.map((t) => t.name));
+  if (!used.has(base)) return base;
+  let n = 2;
+  while (used.has(`${base} ${n}`)) n++;
+  return `${base} ${n}`;
+}
+
+export function setClipOverlay(project: Project, clipId: Id, patch: Partial<OverlayEffect>): Project {
+  const ref = findClip(project, clipId);
+  if (!ref?.clip.overlay) return project;
+  const overlay: OverlayEffect = { ...ref.clip.overlay, ...patch };
+  return updateTrack(project, ref.track.id, (t) => ({
+    ...t,
+    clips: t.clips.map((c) => (c.id === clipId ? { ...c, overlay } : c)),
+  }));
 }
 
 export function setClipText(project: Project, clipId: Id, patch: Partial<TextContent>): Project {

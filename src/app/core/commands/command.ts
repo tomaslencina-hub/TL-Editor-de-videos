@@ -1,4 +1,5 @@
 import type { AnimatableProp, Clip, Id, MediaSource, Project, ProjectSettings, Track, TrackKind, Transition } from '../../../../shared/model';
+import type { OverlayEffect } from '../../../../shared/effects';
 import type { TextContent } from '../../../../shared/text';
 import * as props from '../timeline/clip-props';
 import * as ops from '../timeline/timeline-ops';
@@ -74,6 +75,16 @@ export const Commands = {
   setSpeed: (clipId: Id, speed: number) => cmd('Cambiar velocidad', (p) => ops.setClipSpeed(p, clipId, speed)),
 
   detachAudio: (clipId: Id) => cmd('Separar audio', (p) => ops.detachAudio(p, clipId).project),
+
+  addOverlay: (overlay: OverlayEffect, start: number, onCreated?: (clip: Clip) => void) =>
+    cmd('Agregar efecto', (p) => {
+      const res = ops.addOverlayClip(p, overlay, start);
+      onCreated?.(res.clip);
+      return res.project;
+    }),
+
+  updateOverlay: (clipId: Id, patch: Partial<OverlayEffect>) =>
+    cmd('Editar efecto', (p) => ops.setClipOverlay(p, clipId, patch)),
 
   updateText: (clipId: Id, patch: Partial<TextContent>) => cmd('Editar texto', (p) => ops.setClipText(p, clipId, patch)),
 

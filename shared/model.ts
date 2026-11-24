@@ -10,6 +10,7 @@
  *    que sumar texto, transiciones, filtros y keyframes no requiera migrar el formato.
  */
 
+import type { OverlayEffect } from './effects';
 import type { TextContent } from './text';
 import { isTransitionType, type TransitionType } from './transitions';
 
@@ -87,6 +88,8 @@ export interface Clip {
 
   /** Si está presente, es un clip de texto (generado, sin archivo: `sourceId` vacío). */
   text?: TextContent;
+  /** Si está presente, es un efecto animado superpuesto (corazones, fuegos artificiales…; `sourceId` vacío). */
+  overlay?: OverlayEffect;
   /** Posición/escala/rotación/opacidad (valores estáticos; los keyframes tienen prioridad). */
   transform?: Partial<ClipTransform>;
   /** Ajustes de color. */
@@ -273,4 +276,9 @@ export function nextTrackName(project: Project, kind: TrackKind): string {
   let n = project.tracks.filter((t) => t.kind === kind).length + 1;
   while (used.has(`${base} ${n}`)) n++;
   return `${base} ${n}`;
+}
+
+/** Clip generado por la app (texto o efecto), sin archivo fuente. */
+export function isGeneratedClip(clip: Clip): boolean {
+  return !!clip.text || !!clip.overlay;
 }

@@ -6,6 +6,7 @@ import { MediaLibraryService } from '../media/media-library.service';
 import { Compositor } from '../render/compositor';
 import { planFrame, toTrackDraws, TransitionCache, type PlannedTrack } from '../render/scene';
 import { ImageCache } from '../render/image-cache';
+import { OverlayRenderer } from '../render/overlay-renderer';
 import { resolveTextLayer, TextRasterizer, type RenderedText } from '../render/text-renderer';
 import { findMedia } from '../timeline/timeline-ops';
 import { composeTrack, type Layer } from './compose';
@@ -51,6 +52,7 @@ export class WebGLEngine implements PlaybackEngine {
   private readonly rasterizer = new TextRasterizer();
   private readonly uploadedText = new Map<string, RenderedText>();
   private readonly images = new ImageCache();
+  private readonly overlays = new OverlayRenderer();
   private readonly uploadedImages = new Set<string>();
 
   private last: { project: Project; time: number } | null = null;
@@ -105,6 +107,10 @@ export class WebGLEngine implements PlaybackEngine {
     comp.setSize(Math.round(width * scale), Math.round(height * scale), width);
     const plan: PlannedTrack[] = planFrame(project, time, this.transitions);
     const draws = toTrackDraws(plan, time, (track, layer) => {
+      if (layer.clip.overlay) {
+        // A la resolución del canvas de vista previa (más liviano que dibujar a 4K y escalar).
+        return this.overlays.resolve(comp, `fx:${layer.clip.id}`, layer.clip, time, comp.canvas.width, comp.canvas.height);
+      }
       if (layer.clip.text) {
         return resolveTextLayer(comp, this.rasterizer, this.uploadedText, `text:${layer.clip.id}`, layer.clip, time, height);
       }
@@ -215,7 +221,7 @@ export class WebGLEngine implements PlaybackEngine {
     const assignment = new Map<Slot, Layer>();
     const pending: Layer[] = [];
     for (const layer of layers) {
-      if (layer.clip.text || findMedia(project, layer.clip.sourceId)?.kind === 'image') continue;
+      if (layer.clip.text || layer.clip.overlay || findMedia(project, layer.clip.sourceId)?.kind === 'image') continue;
       const slot = out.slots.find((s) => s.clipId === layer.clip.id && !assignment.has(s));
       if (slot) assignment.set(slot, layer);
       else pending.push(layer);

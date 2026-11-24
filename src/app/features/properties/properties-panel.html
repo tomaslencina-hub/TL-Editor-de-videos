@@ -12,6 +12,37 @@
     <p class="hint">Mové el playhead sobre el clip para agregar keyframes.</p>
   }
 
+  @if (overlay(); as fx) {
+    <section class="fx-section">
+      <div class="section-title">
+        <span>{{ overlayLabels[fx.type] }}</span>
+        <button class="link" (click)="reshuffle()" title="Otra distribución de partículas">Variar</button>
+      </div>
+      <div class="row">
+        <label>Intensidad</label>
+        <input type="range" min="10" max="300" step="5" [value]="fx.intensity * 100" (input)="setOverlay({ intensity: +$any($event.target).value / 100 }, 'fx-int')" />
+        <span class="val">{{ (fx.intensity * 100).toFixed(0) }}</span><span class="unit">%</span><span></span>
+      </div>
+      <div class="row">
+        <label>Tamaño</label>
+        <input type="range" min="30" max="300" step="5" [value]="fx.size * 100" (input)="setOverlay({ size: +$any($event.target).value / 100 }, 'fx-size')" />
+        <span class="val">{{ (fx.size * 100).toFixed(0) }}</span><span class="unit">%</span><span></span>
+      </div>
+      <div class="row">
+        <label>Velocidad</label>
+        <input type="range" min="20" max="300" step="5" [value]="fx.speed * 100" (input)="setOverlay({ speed: +$any($event.target).value / 100 }, 'fx-speed')" />
+        <span class="val">{{ (fx.speed * 100).toFixed(0) }}</span><span class="unit">%</span><span></span>
+      </div>
+      <div class="fx-colors">
+        <label>Color <input type="color" [value]="fx.color" (input)="setOverlay({ color: $any($event.target).value }, 'fx-color')" /></label>
+        <label class="chk">
+          <input type="checkbox" [checked]="fx.multicolor" (change)="setOverlay({ multicolor: $any($event.target).checked })" />
+          Multicolor
+        </label>
+      </div>
+    </section>
+  }
+
   @if (text(); as tx) {
     <section class="text-section">
       <div class="section-title"><span>Texto</span></div>
@@ -119,7 +150,7 @@
       }
     </section>
 
-    @if (!text()) {
+    @if (!text() && !overlay()) {
     <section>
       <div class="section-title">
         <span>Color</span>

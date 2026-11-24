@@ -1,6 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import type { MenuAction } from '../../../shared/ipc-contract';
 import { createEmptyProject } from '../../../shared/model';
+import { makeOverlay, type OverlayType } from '../../../shared/effects';
 import { makeText, type TextPreset } from '../../../shared/text';
 import { Commands } from './commands/command';
 import { ExportService } from './export/export.service';
@@ -110,6 +111,13 @@ export class EditorActionsService {
     let created: string | null = null;
     const transform = preset ? { x: preset.x ?? 0, y: preset.y ?? 0 } : undefined;
     this.store.dispatch(Commands.addText(makeText(preset), start, transform, (c) => (created = c.id)));
+    if (created) this.store.selectClip(created);
+  }
+
+  /** Agrega un efecto animado en el playhead y lo selecciona. */
+  addOverlay(type: OverlayType, start = this.playback.currentTime()): void {
+    let created: string | null = null;
+    this.store.dispatch(Commands.addOverlay(makeOverlay(type), start, (c) => (created = c.id)));
     if (created) this.store.selectClip(created);
   }
 

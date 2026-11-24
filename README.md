@@ -57,10 +57,14 @@ Flujo: trabajar en `dev` → `git checkout test && git merge dev && git push` �
 5. **Transiciones**: pestaña *Transiciones* (18 tipos) → arrastrá al borde de un clip. Clic en la marca ✦ para editarla.
 6. **Imágenes y stickers** (png, jpg, webp, bmp, gif): se importan igual que los videos; entran con 5 s y se estiran
    sin límite. La transparencia de los PNG se respeta.
-7. **Edición**: Ctrl/Shift + clic para seleccionar varios clips; `Ctrl+C`/`Ctrl+X`/`Ctrl+V` (pega en el playhead),
+7. **Efectos** (pestaña *Efectos*): corazones, fuegos artificiales, confeti, nieve, brillos y burbujas. Se agregan en
+   el playhead sobre el video (en su propia pista si hace falta). En *Propiedades*: intensidad, tamaño, velocidad, color,
+   multicolor y *Variar* (otra distribución). También admiten transformación, keyframes y transiciones.
+   Se dibujan a partir del tiempo con aleatorios fijos: vista previa y exportación salen idénticas.
+8. **Edición**: Ctrl/Shift + clic para seleccionar varios clips; `Ctrl+C`/`Ctrl+X`/`Ctrl+V` (pega en el playhead),
    `Ctrl+D` duplicar, `Shift+Supr` borrar cerrando el hueco, `M` marcador (clic derecho sobre él para quitarlo),
    ▲/▼ en el encabezado para reordenar pistas.
-8. **Atajos**: `Espacio` play/pausa, `←`/`→` cuadro a cuadro, `Ctrl+Z`/`Ctrl+Y`, `Ctrl+S` guardar, `Ctrl+E` exportar.
+9. **Atajos**: `Espacio` play/pausa, `←`/`→` cuadro a cuadro, `Ctrl+Z`/`Ctrl+Y`, `Ctrl+S` guardar, `Ctrl+E` exportar.
 
 ## Motor de render
 

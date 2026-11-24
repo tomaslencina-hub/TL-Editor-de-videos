@@ -183,6 +183,9 @@
   &.text {
     background: linear-gradient(135deg, #7b3fc4, #b23ad6);
   }
+  &.fx {
+    background: linear-gradient(135deg, #e0466f, #ff9f43);
+  }
   &.selected {
     border: 2px solid var(--snap);
     &.video {

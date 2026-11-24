@@ -17,6 +17,7 @@ import { projectDuration, type Clip, type MediaSource, type Project } from '../.
 import { Compositor } from '../render/compositor';
 import { planFrame, toTrackDraws, TransitionCache } from '../render/scene';
 import { ImageCache } from '../render/image-cache';
+import { OverlayRenderer } from '../render/overlay-renderer';
 import { resolveTextLayer, TextRasterizer, type RenderedText } from '../render/text-renderer';
 
 export class ExportCancelled extends Error {
@@ -106,6 +107,7 @@ export async function renderVideo(opts: VideoRenderOptions): Promise<void> {
   const uploadedText = new Map<string, RenderedText>();
   // Imágenes: se precargan todas antes de empezar a componer.
   const images = new ImageCache();
+  const overlays = new OverlayRenderer();
   const uploadedImages = new Set<string>();
   const imageUrl = new Map<string, string>();
   for (const m of project.media) if (m.kind === 'image') imageUrl.set(m.id, opts.sourceUrl(m));
@@ -167,6 +169,7 @@ export async function renderVideo(opts: VideoRenderOptions): Promise<void> {
 
       // 4) Compone y codifica.
       const draws = toTrackDraws(plan, t, (_track, layer) => {
+        if (layer.clip.overlay) return overlays.resolve(compositor, `fx:${layer.clip.id}`, layer.clip, t, W, H);
         if (layer.clip.text) return resolveTextLayer(compositor, rasterizer, uploadedText, `text:${layer.clip.id}`, layer.clip, t, H);
         const img = imageUrl.get(layer.clip.sourceId);
         if (img) return images.resolve(compositor, uploadedImages, `img:${layer.clip.id}`, img);

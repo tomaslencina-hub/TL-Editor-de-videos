@@ -3,18 +3,20 @@ import { ProjectStore } from '../../core/state/project-store';
 import { MediaPanel } from '../media-panel/media-panel';
 import { PropertiesPanel } from '../properties/properties-panel';
 import { TextPanel } from '../text-panel/text-panel';
+import { EffectsPanel } from '../effects-panel/effects-panel';
 import { TransitionsPanel } from '../transitions-panel/transitions-panel';
 
-type Tab = 'media' | 'text' | 'transitions' | 'props';
+type Tab = 'media' | 'text' | 'effects' | 'transitions' | 'props';
 
 /** Panel izquierdo con pestañas: medios importados, transiciones y propiedades del clip seleccionado. */
 @Component({
   selector: 'app-library',
-  imports: [MediaPanel, TextPanel, TransitionsPanel, PropertiesPanel],
+  imports: [MediaPanel, TextPanel, EffectsPanel, TransitionsPanel, PropertiesPanel],
   template: `
     <nav class="tabs" role="tablist">
       <button role="tab" [class.active]="tab() === 'media'" (click)="tab.set('media')">🎞 Medios</button>
       <button role="tab" [class.active]="tab() === 'text'" (click)="tab.set('text')">T Texto</button>
+      <button role="tab" [class.active]="tab() === 'effects'" (click)="tab.set('effects')">✨ Efectos</button>
       <button role="tab" [class.active]="tab() === 'transitions'" (click)="tab.set('transitions')">✦ Transiciones</button>
       <button role="tab" [class.active]="tab() === 'props'" (click)="tab.set('props')">⚙ Propiedades</button>
     </nav>
@@ -24,6 +26,9 @@ type Tab = 'media' | 'text' | 'transitions' | 'props';
       }
       @case ('text') {
         <app-text-panel class="content" />
+      }
+      @case ('effects') {
+        <app-effects-panel class="content" />
       }
       @case ('transitions') {
         <app-transitions-panel class="content" />
@@ -42,7 +47,9 @@ type Tab = 'media' | 'text' | 'transitions' | 'props';
     .tabs {
       display: flex;
       gap: 2px;
-      padding: 6px 8px 0;
+      padding: 6px 6px 0;
+      overflow-x: auto;
+      scrollbar-width: none;
       border-bottom: 1px solid var(--border);
       button {
         border: none;
@@ -50,7 +57,9 @@ type Tab = 'media' | 'text' | 'transitions' | 'props';
         border-radius: var(--radius) var(--radius) 0 0;
         background: transparent;
         color: var(--text-2);
-        padding: 6px 12px;
+        padding: 6px 8px;
+        white-space: nowrap;
+        flex: none;
         &.active {
           color: var(--text-0);
           border-bottom-color: var(--accent);

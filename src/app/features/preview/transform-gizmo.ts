@@ -113,6 +113,8 @@ export class TransformGizmo {
 
   /** Tamaño de la fuente de una capa: video (contain) o texto (natural, en píxeles del cuadro). */
   private sourceSize(clip: Clip, media: MediaSource | undefined): { w: number; h: number; fit: 'contain' | 'none' } | null {
+    // Los efectos ocupan todo el cuadro.
+    if (clip.overlay) return { w: this.frameW(), h: this.frameH(), fit: 'contain' };
     if (clip.text) {
       const r = this.rasterizer.render(clip.text, this.frameH());
       return { w: r.width, h: r.height, fit: 'none' };
