@@ -1,5 +1,6 @@
 import { Component, effect, inject, signal, untracked } from '@angular/core';
 import { ProjectStore } from '../../core/state/project-store';
+import { Icon } from '../../core/ui/icon';
 import { MediaPanel } from '../media-panel/media-panel';
 import { PropertiesPanel } from '../properties/properties-panel';
 import { TextPanel } from '../text-panel/text-panel';
@@ -11,14 +12,14 @@ type Tab = 'media' | 'text' | 'effects' | 'transitions' | 'props';
 /** Panel izquierdo con pestañas: medios importados, transiciones y propiedades del clip seleccionado. */
 @Component({
   selector: 'app-library',
-  imports: [MediaPanel, TextPanel, EffectsPanel, TransitionsPanel, PropertiesPanel],
+  imports: [Icon, MediaPanel, TextPanel, EffectsPanel, TransitionsPanel, PropertiesPanel],
   template: `
     <nav class="tabs" role="tablist">
-      <button role="tab" [class.active]="tab() === 'media'" (click)="tab.set('media')">🎞 Medios</button>
-      <button role="tab" [class.active]="tab() === 'text'" (click)="tab.set('text')">T Texto</button>
-      <button role="tab" [class.active]="tab() === 'effects'" (click)="tab.set('effects')">✨ Efectos</button>
-      <button role="tab" [class.active]="tab() === 'transitions'" (click)="tab.set('transitions')">✦ Transiciones</button>
-      <button role="tab" [class.active]="tab() === 'props'" (click)="tab.set('props')">⚙ Propiedades</button>
+      <button role="tab" [class.active]="tab() === 'media'" (click)="tab.set('media')"><app-icon name="images" [size]="15" /> Medios</button>
+      <button role="tab" [class.active]="tab() === 'text'" (click)="tab.set('text')"><app-icon name="type" [size]="15" /> Texto</button>
+      <button role="tab" [class.active]="tab() === 'effects'" (click)="tab.set('effects')"><app-icon name="sparkles" [size]="15" /> Efectos</button>
+      <button role="tab" [class.active]="tab() === 'transitions'" (click)="tab.set('transitions')"><app-icon name="transition" [size]="15" /> Transiciones</button>
+      <button role="tab" [class.active]="tab() === 'props'" (click)="tab.set('props')"><app-icon name="sliders" [size]="15" /> Propiedades</button>
     </nav>
     @switch (tab()) {
       @case ('media') {

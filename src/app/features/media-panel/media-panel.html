@@ -1,6 +1,6 @@
 <header>
   <span class="title">{{ store.project().media.length }} archivo(s)</span>
-  <button (click)="actions.importDialog()" title="Importar medios (Ctrl+I)">＋ Importar</button>
+  <button (click)="actions.importDialog()" title="Importar medios (Ctrl+I)"><app-icon name="plus" [size]="15" /> Importar</button>
 </header>
 
 <div class="list">
@@ -18,7 +18,7 @@
         @if (assets?.thumbnail; as src) {
           <img [src]="src" alt="" draggable="false" />
         } @else if (!m.hasVideo) {
-          <span class="audio-icon">♪</span>
+          <span class="audio-icon"><app-icon name="music" [size]="26" /></span>
         }
         @if (m.kind !== 'image') {
           <span class="duration mono">{{ formatDuration(m.duration) }}</span>
@@ -34,11 +34,11 @@
           }
         </div>
       </div>
-      <button class="icon remove" title="Quitar del proyecto" (click)="remove(m, $event)">✕</button>
+      <button class="icon remove" title="Quitar del proyecto" (click)="remove(m, $event)"><app-icon name="x" [size]="14" /></button>
     </div>
   } @empty {
     <div class="empty" (click)="actions.importDialog()">
-      <div class="big">⇪</div>
+      <div class="big"><app-icon name="upload" [size]="34" [strokeWidth]="1.5" /></div>
       Arrastrá videos o audios acá<br />o hacé clic para importar
     </div>
   }

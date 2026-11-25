@@ -3,6 +3,7 @@ import { EditorActionsService } from './core/editor-actions.service';
 import { TL_API } from './core/ipc/tl-api';
 import { PlaybackService } from './core/playback/playback.service';
 import { ProjectStore } from './core/state/project-store';
+import { SessionService } from './core/state/session.service';
 import { TimelineViewService } from './features/timeline/timeline-view.service';
 import { ExportDialog } from './features/export-dialog/export-dialog';
 import { SubtitlesDialog } from './features/subtitles-dialog/subtitles-dialog';
@@ -33,17 +34,14 @@ export class App {
     const off = this.api.onMenuAction((a) => this.actions.handleMenu(a));
     inject(DestroyRef).onDestroy(off);
 
+    // Recupera la sesión anterior; a partir de ahí se guarda sola (no hace falta avisar al cerrar).
+    void inject(SessionService).restore();
+
     // Título de la ventana con indicador de cambios sin guardar.
     effect(() => {
       const name = this.store.project().name;
       document.title = `${this.store.dirty() ? '● ' : ''}${name} — SHOTON`;
     });
-  }
-
-  @HostListener('window:beforeunload', ['$event'])
-  protected onBeforeUnload(e: BeforeUnloadEvent): void {
-    // Electron muestra el diálogo de confirmación desde main (will-prevent-unload).
-    if (this.store.dirty()) e.preventDefault();
   }
 
   @HostListener('window:keydown', ['$event'])

@@ -1,7 +1,7 @@
 @if (subs.open()) {
   <div class="backdrop" (click)="subs.close()">
     <div class="dialog" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
-      <h2>💬 Subtítulos automáticos</h2>
+      <h2><app-icon name="captions" [size]="20" /> Subtítulos automáticos</h2>
       <p class="muted">Se transcribe lo que se escucha en la timeline y se crea una pista con un texto por frase. Funciona sin internet (solo la primera vez se baja el modelo).</p>
 
       @let o = subs.options();

@@ -70,6 +70,10 @@ Flujo: trabajar en `dev` → `git checkout test && git merge dev && git push` �
    ▲/▼ en el encabezado para reordenar pistas.
 10. **Atajos**: `Espacio` play/pausa, `←`/`→` cuadro a cuadro, `Ctrl+Z`/`Ctrl+Y`, `Ctrl+S` guardar, `Ctrl+E` exportar.
 
+**Sesión automática**: la app guarda sola el estado de edición (proyecto, archivo abierto, playhead y zoom) en
+`%APPDATA%SHOTONsession.json` y al abrirla te deja donde estabas, aunque no hayas guardado el `.vproj` o se haya
+cerrado de golpe. El punto amarillo junto al nombre sigue indicando cambios sin guardar en el archivo del proyecto.
+
 ## Motor de render
 
 La vista previa y la exportación usan **el mismo compositor WebGL2** (`src/app/core/render/`): capas por pista,

@@ -13,17 +13,17 @@
 <div class="transport">
   <span class="time mono">{{ timecode() }}</span>
   <div class="buttons">
-    <button class="icon" title="Ir al inicio (Inicio)" (click)="playback.seek(0)">⏮</button>
-    <button class="icon" title="Frame anterior (←)" (click)="playback.step(-1)">◀︎</button>
+    <button class="icon" title="Ir al inicio (Inicio)" (click)="playback.seek(0)"><app-icon name="skip-back" /></button>
+    <button class="icon" title="Frame anterior (←)" (click)="playback.step(-1)"><app-icon name="step-back" /></button>
     <button
       class="icon play"
       [title]="playback.playing() ? 'Pausa (Espacio)' : 'Reproducir (Espacio)'"
       (click)="playback.toggle()"
     >
-      {{ playback.playing() ? '❚❚' : '▶' }}
+      <app-icon [name]="playback.playing() ? 'pause' : 'play'" [size]="18" [filled]="true" />
     </button>
-    <button class="icon" title="Frame siguiente (→)" (click)="playback.step(1)">▶︎</button>
-    <button class="icon" title="Ir al final (Fin)" (click)="playback.seek(store.duration())">⏭</button>
+    <button class="icon" title="Frame siguiente (→)" (click)="playback.step(1)"><app-icon name="step-forward" /></button>
+    <button class="icon" title="Ir al final (Fin)" (click)="playback.seek(store.duration())"><app-icon name="skip-forward" /></button>
   </div>
   <span class="time mono total">{{ durationCode() }}</span>
 </div>

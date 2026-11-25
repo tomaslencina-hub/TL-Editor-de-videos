@@ -12,10 +12,11 @@ import { PlaybackService } from '../../core/playback/playback.service';
 import { ProjectStore } from '../../core/state/project-store';
 import { formatTimecode } from '../../core/timeline/time';
 import { TransformGizmo } from './transform-gizmo';
+import { Icon } from '../../core/ui/icon';
 
 @Component({
   selector: 'app-preview',
-  imports: [TransformGizmo],
+  imports: [TransformGizmo, Icon],
   templateUrl: './preview.html',
   styleUrl: './preview.scss',
 })

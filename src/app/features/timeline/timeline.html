@@ -1,12 +1,12 @@
 <div class="tl-toolbar">
-  <button title="Dividir en el playhead (S / Ctrl+B)" (click)="actions.splitAtPlayhead()">✂ Dividir</button>
+  <button title="Dividir en el playhead (S / Ctrl+B)" (click)="actions.splitAtPlayhead()"><app-icon name="scissors" [size]="15" /> Dividir</button>
   <button title="Borrar la selección (Supr)" [disabled]="!hasSelection()" (click)="actions.deleteSelected()">
-    🗑 Borrar
+    <app-icon name="trash" [size]="15" /> Borrar
   </button>
   <div class="sep"></div>
-  <button title="Agregar pista de video" (click)="addTrack('video')">＋ 🎞 Video</button>
-  <button title="Agregar pista de audio" (click)="addTrack('audio')">＋ ♪ Audio</button>
-  <button title="Subtítulos automáticos a partir del audio" (click)="subtitles.show()">💬 Subtítulos</button>
+  <button title="Agregar pista de video" (click)="addTrack('video')"><app-icon name="plus" [size]="14" /><app-icon name="film" [size]="15" /> Video</button>
+  <button title="Agregar pista de audio" (click)="addTrack('audio')"><app-icon name="plus" [size]="14" /><app-icon name="music" [size]="15" /> Audio</button>
+  <button title="Subtítulos automáticos a partir del audio" (click)="subtitles.show()"><app-icon name="captions" [size]="15" /> Subtítulos</button>
   <div class="sep"></div>
   <button
     class="icon"
@@ -14,12 +14,12 @@
     (click)="view.snapEnabled.set(!view.snapEnabled())"
     title="Imantado a bordes y playhead (mantené Alt para desactivarlo temporalmente)"
   >
-    🧲
+    <app-icon name="magnet" />
   </button>
 
   @if (selectedTransitionInfo(); as st) {
     <div class="inspector">
-      <span class="inspector-title">✦ {{ st.label }}</span>
+      <span class="inspector-title"><app-icon name="transition" [size]="14" /> {{ st.label }}</span>
       <select (change)="updateSelectedTransition({ type: $any($event.target).value })" title="Tipo de transición">
         @for (t of transitionTypes; track t) {
           <option [value]="t" [selected]="t === st.transition.type">{{ transitionLabels[t] }}</option>
@@ -37,12 +37,12 @@
         />
         s
       </label>
-      <button class="icon" title="Quitar transición (Supr)" (click)="removeSelectedTransition()">✕</button>
+      <button class="icon" title="Quitar transición (Supr)" (click)="removeSelectedTransition()"><app-icon name="x" [size]="14" /></button>
     </div>
   }
 
   <div class="spacer"></div>
-  <button class="icon" title="Alejar (-)" (click)="zoomAround(0.8)">－</button>
+  <button class="icon" title="Alejar (-)" (click)="zoomAround(0.8)"><app-icon name="minus" /></button>
   <input
     type="range"
     class="zoom"
@@ -53,8 +53,8 @@
     (input)="setZoom(+$any($event.target).value)"
     title="Zoom (Ctrl + rueda)"
   />
-  <button class="icon" title="Acercar (+)" (click)="zoomAround(1.25)">＋</button>
-  <button title="Ajustar a la ventana" (click)="zoomToFit()">Ajustar</button>
+  <button class="icon" title="Acercar (+)" (click)="zoomAround(1.25)"><app-icon name="plus" /></button>
+  <button title="Ajustar a la ventana" (click)="zoomToFit()"><app-icon name="maximize" [size]="14" /> Ajustar</button>
 </div>
 
 <div class="tl-body">
@@ -80,7 +80,7 @@
               (dblclick)="editingTrackId.set(row.track.id)"
               [title]="row.track.name + ' — doble clic para renombrar'"
             >
-              {{ row.track.kind === 'video' ? '🎞' : '♪' }} {{ row.track.name }}
+              <app-icon [name]="row.track.kind === 'video' ? 'film' : 'music'" [size]="13" /> {{ row.track.name }}
             </span>
           }
           <div class="track-buttons">
@@ -90,7 +90,7 @@
               (click)="toggleMute(row.track)"
               [title]="row.track.muted ? 'Activar sonido' : 'Silenciar pista'"
             >
-              {{ row.track.muted ? '🔇' : '🔊' }}
+              <app-icon [name]="row.track.muted ? 'volume-off' : 'volume'" [size]="14" />
             </button>
             <button
               class="icon small"
@@ -98,18 +98,18 @@
               (click)="toggleLock(row.track)"
               [title]="row.track.locked ? 'Desbloquear pista' : 'Bloquear pista'"
             >
-              {{ row.track.locked ? '🔒' : '🔓' }}
+              <app-icon [name]="row.track.locked ? 'lock' : 'lock-open'" [size]="14" />
             </button>
-            <button class="icon small" title="Renombrar pista" (click)="editingTrackId.set(row.track.id)">✎</button>
-            <button class="icon small" title="Subir pista" [disabled]="!canMove(row.track, -1)" (click)="moveTrack(row.track, -1)">▲</button>
-            <button class="icon small" title="Bajar pista" [disabled]="!canMove(row.track, 1)" (click)="moveTrack(row.track, 1)">▼</button>
+            <button class="icon small" title="Renombrar pista" (click)="editingTrackId.set(row.track.id)"><app-icon name="pencil" [size]="13" /></button>
+            <button class="icon small" title="Subir pista" [disabled]="!canMove(row.track, -1)" (click)="moveTrack(row.track, -1)"><app-icon name="chevron-up" [size]="14" /></button>
+            <button class="icon small" title="Bajar pista" [disabled]="!canMove(row.track, 1)" (click)="moveTrack(row.track, 1)"><app-icon name="chevron-down" [size]="14" /></button>
             <button
               class="icon small"
               [disabled]="!row.removable"
               [title]="row.removable ? 'Quitar pista' : 'Tiene que quedar al menos una pista de este tipo'"
               (click)="removeTrack(row.track)"
             >
-              ✕
+              <app-icon name="x" [size]="14" />
             </button>
           </div>
         </div>
@@ -196,7 +196,7 @@
               <span class="clip-label">{{ clipName(clip) }}</span>
               @if (store.selectedClipId() === clip.id) {
                 @for (kt of keyframeTimes(clip); track kt) {
-                  <span class="kf" [style.left.px]="kt * view.pps()" title="Keyframe">◆</span>
+                  <span class="kf" [style.left.px]="kt * view.pps()" title="Keyframe"><app-icon name="diamond" [size]="10" [filled]="true" /></span>
                 }
               }
               <div class="handle start" (pointerdown)="onClipPointerDown($event, clip, row.track, 'start')"></div>
@@ -214,7 +214,7 @@
               [title]="transitionLabels[b.type] + ' · ' + (b.end - b.start).toFixed(2) + ' s'"
               (pointerdown)="onBadgePointerDown($event, b)"
             >
-              <span>✦</span>
+              <app-icon name="transition" [size]="12" />
             </div>
           }
 

@@ -44,7 +44,8 @@ import {
   type TrimLimits,
 } from '../../core/timeline/timeline-ops';
 import { AutofocusDirective } from '../../core/ui/autofocus.directive';
-import { OVERLAY_ICONS, OVERLAY_LABELS } from '../../../../shared/effects';
+import { Icon } from '../../core/ui/icon';
+import { OVERLAY_LABELS } from '../../../../shared/effects';
 import { keyframeTimes } from '../../core/timeline/clip-props';
 import { SubtitlesService } from '../../core/subtitles/subtitles.service';
 import { MEDIA_DRAG_TYPE, MediaDragService, TRANSITION_DRAG_TYPE } from '../../core/ui/media-drag.service';
@@ -95,7 +96,7 @@ function badgeOf(t: ResolvedTransition): TransitionBadge {
 
 @Component({
   selector: 'app-timeline',
-  imports: [TimelineRuler, Waveform, AutofocusDirective],
+  imports: [TimelineRuler, Waveform, AutofocusDirective, Icon],
   templateUrl: './timeline.html',
   styleUrl: './timeline.scss',
 })
@@ -211,7 +212,7 @@ export class Timeline implements AfterViewInit, OnDestroy {
   }
 
   protected clipName(clip: Clip): string {
-    if (clip.overlay) return `${OVERLAY_ICONS[clip.overlay.type]}  ${OVERLAY_LABELS[clip.overlay.type]}`;
+    if (clip.overlay) return `✦ ${OVERLAY_LABELS[clip.overlay.type]}`;
     if (clip.text) return `T  ${clip.text.text.split('\n')[0] || 'Texto'}`;
     const name = this.mediaById().get(clip.sourceId)?.name ?? '¿medio desconocido?';
     const sp = clipSpeed(clip);

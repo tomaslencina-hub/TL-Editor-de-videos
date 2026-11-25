@@ -5,10 +5,12 @@ import { EditorActionsService } from '../../core/editor-actions.service';
 import { MediaLibraryService } from '../../core/media/media-library.service';
 import { ProjectStore } from '../../core/state/project-store';
 import { formatDuration } from '../../core/timeline/time';
+import { Icon } from '../../core/ui/icon';
 import { MEDIA_DRAG_TYPE, MediaDragService } from '../../core/ui/media-drag.service';
 
 @Component({
   selector: 'app-media-panel',
+  imports: [Icon],
   templateUrl: './media-panel.html',
   styleUrl: './media-panel.scss',
 })

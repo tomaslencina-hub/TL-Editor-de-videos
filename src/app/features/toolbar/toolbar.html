@@ -7,9 +7,9 @@
 />
 
 <div class="group">
-  <button class="icon" title="Nuevo proyecto (Ctrl+N)" (click)="actions.newProject()">🗋</button>
-  <button class="icon" title="Abrir proyecto (Ctrl+O)" (click)="actions.openProject()">📂</button>
-  <button class="icon" title="Guardar (Ctrl+S)" (click)="actions.save(false)">💾</button>
+  <button class="icon" title="Nuevo proyecto (Ctrl+N)" (click)="actions.newProject()"><app-icon name="file-plus" /></button>
+  <button class="icon" title="Abrir proyecto (Ctrl+O)" (click)="actions.openProject()"><app-icon name="folder-open" /></button>
+  <button class="icon" title="Guardar (Ctrl+S)" (click)="actions.save(false)"><app-icon name="save" /></button>
 </div>
 
 <div class="group">
@@ -19,7 +19,7 @@
     [title]="'Deshacer' + (store.undoLabel() ? ': ' + store.undoLabel() : '') + ' (Ctrl+Z)'"
     (click)="store.undo()"
   >
-    ↶
+    <app-icon name="undo" />
   </button>
   <button
     class="icon"
@@ -27,7 +27,7 @@
     [title]="'Rehacer' + (store.redoLabel() ? ': ' + store.redoLabel() : '') + ' (Ctrl+Y)'"
     (click)="store.redo()"
   >
-    ↷
+    <app-icon name="redo" />
   </button>
 </div>
 
@@ -48,12 +48,12 @@
 @switch (updates.status().state) {
   @case ('downloading') {
     <span class="update muted" [title]="'Descargando SHOTON ' + updates.status().version">
-      ⤓ Actualización {{ updates.status().percent ?? 0 }}%
+      <app-icon name="download" [size]="14" /> Actualización {{ updates.status().percent ?? 0 }}%
     </span>
   }
   @case ('ready') {
     <button class="update-ready" (click)="updates.install()" [title]="'Instalar SHOTON ' + updates.status().version + ' y reiniciar'">
-      ⟳ Reiniciar y actualizar a {{ updates.status().version }}
+      <app-icon name="refresh" [size]="14" /> Reiniciar y actualizar a {{ updates.status().version }}
     </button>
   }
 }
@@ -75,4 +75,4 @@
   </select>
 </label>
 
-<button class="primary" (click)="exporter.show()" title="Exportar (Ctrl+E)">Exportar</button>
+<button class="primary" (click)="exporter.show()" title="Exportar (Ctrl+E)"><app-icon name="upload" [size]="15" /> Exportar</button>

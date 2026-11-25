@@ -134,6 +134,12 @@ export class ProjectStore {
     this.selectedTransition.set(null);
   }
 
+  /** Recupera una sesión: como `load`, pero puede quedar marcado con cambios sin guardar. */
+  restore(project: Project, filePath: string | null, dirty: boolean): void {
+    this.load(project, filePath);
+    if (dirty) this._savedProject.set(null);
+  }
+
   markSaved(filePath: string): void {
     this._savedProject.set(this._project());
     this.filePath.set(filePath);

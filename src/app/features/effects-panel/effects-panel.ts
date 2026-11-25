@@ -12,7 +12,7 @@ import { drawOverlay } from '../../core/render/overlay-renderer';
       @for (t of types; track t) {
         <button class="card" (click)="add(t)" [title]="'Agregar ' + labels[t]">
           <canvas #thumb width="320" height="180"></canvas>
-          <span class="name">{{ icons[t] }} {{ labels[t] }}</span>
+          <span class="name">{{ labels[t] }}</span>
         </button>
       }
     </div>

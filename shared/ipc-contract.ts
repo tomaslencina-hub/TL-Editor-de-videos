@@ -70,6 +70,20 @@ export interface SubtitleProgress {
   ratio: number;
 }
 
+/** Estado de edición que se recupera al volver a abrir la app. */
+export interface SessionData {
+  version: 1;
+  project: Project;
+  /** Archivo .vproj abierto (null si nunca se guardó). */
+  filePath: string | null;
+  /** Había cambios sin guardar en el .vproj. */
+  dirty: boolean;
+  playhead: number;
+  /** Zoom de la timeline (px/s). */
+  pps: number;
+  savedAt: string;
+}
+
 /** Estado de la actualización automática. */
 export interface UpdateStatus {
   state: 'idle' | 'disabled' | 'checking' | 'up-to-date' | 'downloading' | 'ready' | 'error';
@@ -135,6 +149,12 @@ export interface TlApi {
   /** Guarda un archivo .srt (abre el diálogo). Devuelve la ruta o null si se cancela. */
   saveSrt(segments: SubtitleSegment[], suggestedName: string): Promise<string | null>;
 
+  loadSession(): Promise<SessionData | null>;
+  /** Guardado en segundo plano (no espera respuesta). */
+  saveSession(data: SessionData): void;
+  /** Guardado sincrónico (al cerrar la ventana). */
+  saveSessionSync(data: SessionData): void;
+
   getUpdateStatus(): Promise<UpdateStatus>;
   onUpdateStatus(cb: (status: UpdateStatus) => void): () => void;
   /** Cierra la app, instala la versión descargada y la vuelve a abrir. */
@@ -166,6 +186,9 @@ export type IpcChannel =
   | 'subtitles:cancel'
   | 'subtitles:progress'
   | 'subtitles:save-srt'
+  | 'session:load'
+  | 'session:save'
+  | 'session:save-sync'
   | 'update:status'
   | 'update:get-status'
   | 'update:install'

@@ -43,6 +43,12 @@ const api: TlApi = {
   onSubtitleProgress: (cb) => subscribe<SubtitleProgress>('subtitles:progress', cb),
   saveSrt: (segments, name) => invoke('subtitles:save-srt', segments, name),
 
+  loadSession: () => invoke('session:load'),
+  saveSession: (data) => ipcRenderer.send('session:save' satisfies IpcChannel, data),
+  saveSessionSync: (data) => {
+    ipcRenderer.sendSync('session:save-sync' satisfies IpcChannel, data);
+  },
+
   getUpdateStatus: () => invoke('update:get-status'),
   onUpdateStatus: (cb) => subscribe<UpdateStatus>('update:status', cb),
   installUpdate: () => invoke('update:install'),

@@ -9,6 +9,7 @@ import { SelectedClipService } from '../../core/state/selected-clip.service';
 import { hasKeyframeAt, keyframeTimes, KEYFRAME_EPS } from '../../core/timeline/clip-props';
 import type { ClipAudioPatch } from '../../core/timeline/timeline-ops';
 import { formatTimecode } from '../../core/timeline/time';
+import { Icon } from '../../core/ui/icon';
 import { FONT_FAMILIES, TEXT_ANIMATION_LABELS, TEXT_ANIMATIONS, type TextContent } from '../../../../shared/text';
 import { OVERLAY_LABELS, type OverlayEffect } from '../../../../shared/effects';
 
@@ -44,7 +45,7 @@ const COLOR_ROWS: PropRow[] = [
 
 @Component({
   selector: 'app-properties-panel',
-  imports: [NgTemplateOutlet],
+  imports: [NgTemplateOutlet, Icon],
   templateUrl: './properties-panel.html',
   styleUrl: './properties-panel.scss',
 })

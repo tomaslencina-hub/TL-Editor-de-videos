@@ -2,6 +2,7 @@ import { Component, computed, inject } from '@angular/core';
 import { SUBTITLE_STYLE_LABELS, SUBTITLE_STYLES } from '../../../../shared/text';
 import { SubtitlesService } from '../../core/subtitles/subtitles.service';
 import { SelectedClipService } from '../../core/state/selected-clip.service';
+import { Icon } from '../../core/ui/icon';
 
 const LANGUAGES = [
   { code: 'es', label: 'Español' },
@@ -14,6 +15,7 @@ const LANGUAGES = [
 
 @Component({
   selector: 'app-subtitles-dialog',
+  imports: [Icon],
   templateUrl: './subtitles-dialog.html',
   styleUrl: '../export-dialog/export-dialog.scss',
 })

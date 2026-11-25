@@ -3,8 +3,8 @@
     <div class="clip-name" [title]="sel.media()?.path ?? ''">{{ info()?.name }}</div>
     <div class="clip-meta mono">{{ info()?.start }} · {{ info()?.duration }}</div>
     <div class="key-nav">
-      <button class="icon small" [disabled]="prevKey() === null" (click)="goToKey(prevKey())" title="Keyframe anterior">◀◆</button>
-      <button class="icon small" [disabled]="nextKey() === null" (click)="goToKey(nextKey())" title="Keyframe siguiente">◆▶</button>
+      <button class="icon small" [disabled]="prevKey() === null" (click)="goToKey(prevKey())" title="Keyframe anterior"><app-icon name="chevron-left" [size]="14" /><app-icon name="diamond" [size]="11" /></button>
+      <button class="icon small" [disabled]="nextKey() === null" (click)="goToKey(nextKey())" title="Keyframe siguiente"><app-icon name="diamond" [size]="11" /><app-icon name="chevron-right" [size]="14" /></button>
     </div>
   </header>
 
@@ -16,7 +16,7 @@
     <section class="fx-section">
       <div class="section-title">
         <span>{{ overlayLabels[fx.type] }}</span>
-        <button class="link" (click)="reshuffle()" title="Otra distribución de partículas">Variar</button>
+        <button class="link" (click)="reshuffle()" title="Otra distribución de partículas"><app-icon name="shuffle" [size]="13" /> Variar</button>
       </div>
       <div class="row">
         <label>Intensidad</label>
@@ -69,11 +69,11 @@
         />
       </div>
       <div class="line">
-        <button class="icon tog" [class.active]="tx.bold" (click)="setText({ bold: !tx.bold })" title="Negrita"><b>B</b></button>
-        <button class="icon tog" [class.active]="tx.italic" (click)="setText({ italic: !tx.italic })" title="Cursiva"><i>I</i></button>
-        <button class="icon tog" [class.active]="tx.align === 'left'" (click)="setText({ align: 'left' })" title="Alinear a la izquierda">⇤</button>
-        <button class="icon tog" [class.active]="tx.align === 'center'" (click)="setText({ align: 'center' })" title="Centrar">≡</button>
-        <button class="icon tog" [class.active]="tx.align === 'right'" (click)="setText({ align: 'right' })" title="Alinear a la derecha">⇥</button>
+        <button class="icon tog" [class.active]="tx.bold" (click)="setText({ bold: !tx.bold })" title="Negrita"><app-icon name="bold" [size]="15" /></button>
+        <button class="icon tog" [class.active]="tx.italic" (click)="setText({ italic: !tx.italic })" title="Cursiva"><app-icon name="italic" [size]="15" /></button>
+        <button class="icon tog" [class.active]="tx.align === 'left'" (click)="setText({ align: 'left' })" title="Alinear a la izquierda"><app-icon name="align-left" [size]="15" /></button>
+        <button class="icon tog" [class.active]="tx.align === 'center'" (click)="setText({ align: 'center' })" title="Centrar"><app-icon name="align-center" [size]="15" /></button>
+        <button class="icon tog" [class.active]="tx.align === 'right'" (click)="setText({ align: 'right' })" title="Alinear a la derecha"><app-icon name="align-right" [size]="15" /></button>
         <input type="color" [value]="tx.color" (input)="setText({ color: $any($event.target).value }, 'text-color')" title="Color" />
       </div>
       <div class="line">
@@ -247,7 +247,7 @@
         (click)="toggleKey(row)"
         [title]="keyState(row) === 'here' ? 'Quitar keyframe' : 'Agregar keyframe en el playhead'"
       >
-        ◆
+        <app-icon name="diamond" [size]="13" [filled]="keyState(row) !== 'none'" />
       </button>
     </div>
   </ng-template>

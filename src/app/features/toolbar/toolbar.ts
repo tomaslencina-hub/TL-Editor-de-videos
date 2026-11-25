@@ -4,6 +4,7 @@ import { EditorActionsService } from '../../core/editor-actions.service';
 import { ExportService } from '../../core/export/export.service';
 import { ProjectStore } from '../../core/state/project-store';
 import { UpdateService } from '../../core/update/update.service';
+import { Icon } from '../../core/ui/icon';
 
 interface ResolutionPreset {
   label: string;
@@ -23,6 +24,7 @@ const FPS_OPTIONS = [23.976, 24, 25, 29.97, 30, 50, 59.94, 60];
 
 @Component({
   selector: 'app-toolbar',
+  imports: [Icon],
   templateUrl: './toolbar.html',
   styleUrl: './toolbar.scss',
 })
