@@ -12,6 +12,7 @@ import { ProjectStore } from './state/project-store';
 import { clipDuration } from '../../../shared/model';
 import { clipAt, copyClips, findClip, type ClipboardData } from './timeline/timeline-ops';
 import { NotificationsService } from './ui/notifications.service';
+import { ImportReportService } from './import/import-report.service';
 
 /** Acciones de alto nivel del editor (menú, atajos, botones). */
 @Injectable({ providedIn: 'root' })
@@ -22,6 +23,7 @@ export class EditorActionsService {
   private readonly playback = inject(PlaybackService);
   private readonly exporter = inject(ExportService);
   private readonly notify = inject(NotificationsService);
+  private readonly report = inject(ImportReportService);
 
   handleMenu(action: MenuAction): void {
     switch (action) {
@@ -33,6 +35,7 @@ export class EditorActionsService {
       case 'export': return this.exporter.show();
       case 'undo': return this.store.undo();
       case 'redo': return this.store.redo();
+      case 'import-filmora': return void this.importFilmora();
     }
   }
 
@@ -73,6 +76,57 @@ export class EditorActionsService {
     } catch (e) {
       this.notify.error(`No se pudo guardar: ${errorMessage(e)}`);
     }
+  }
+
+  /** Convierte un proyecto de Filmora (.wfp) y lo abre como proyecto nuevo (sin guardar). */
+  async importFilmora(): Promise<void> {
+    if (!this.confirmDiscard()) return;
+    try {
+      const res = await this.api.importFilmora();
+      if (!res) return;
+      this.playback.pause();
+      this.playback.seek(0);
+      this.store.restore(res.project, null, true);
+      await this.library.refreshAll();
+      const p = res.project;
+      this.report.show({
+        title: `Importado de Filmora: ${p.name}`,
+        summary: [
+          `${res.stats.clips} clips de video, audio e imagen y ${res.stats.texts} títulos en ${p.tracks.length} pistas.`,
+          `${p.settings.width}×${p.settings.height} a ${p.settings.fps} fps, ${res.stats.media} archivos de medios.`,
+          'Guardalo con Ctrl+S para tenerlo como proyecto de SHOTON (.vproj).',
+        ],
+        warnings: res.warnings,
+        missing: res.missing.length,
+      });
+    } catch (e) {
+      this.notify.error(`No se pudo importar el proyecto de Filmora: ${errorMessage(e)}`);
+    }
+  }
+
+  /** Busca en una carpeta los archivos que faltan (por nombre) y los vuelve a vincular. */
+  async relinkMissing(): Promise<void> {
+    const assets = this.library.assets();
+    const missing = this.store.project().media.filter((m) => assets.get(m.id)?.missing);
+    if (!missing.length) return;
+    // Nombre de archivo de una ruta de Windows o POSIX.
+    const base = (p: string) => p.split(/[\\/]/).pop() ?? p;
+    const found = await this.api.findMedia([...new Set(missing.map((m) => base(m.path)))]);
+    if (!found) return;
+    const paths: Record<string, string> = {};
+    for (const m of missing) {
+      const hit = found[base(m.path).toLowerCase()];
+      if (hit) paths[m.id] = hit;
+    }
+    const n = Object.keys(paths).length;
+    if (!n) {
+      this.notify.error('No se encontró ninguno de los archivos en esa carpeta.');
+      return;
+    }
+    this.store.dispatch(Commands.relinkMedia(paths));
+    await this.library.refreshAll();
+    const still = missing.length - n;
+    this.notify.show(still ? `Se vincularon ${n} archivo(s); faltan ${still}.` : `Se vincularon los ${n} archivos.`, still ? 'info' : 'success', 5000);
   }
 
   async importDialog(): Promise<void> {

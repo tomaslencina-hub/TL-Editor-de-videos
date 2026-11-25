@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import type { MediaSource } from '../../../../shared/model';
 import { Commands } from '../../core/commands/command';
 import { EditorActionsService } from '../../core/editor-actions.service';
@@ -21,6 +21,7 @@ export class MediaPanel {
   private readonly drag = inject(MediaDragService);
 
   protected readonly formatDuration = formatDuration;
+  protected readonly missingCount = computed(() => [...this.library.assets().values()].filter((a) => a.missing).length);
 
   protected onDragStart(e: DragEvent, media: MediaSource): void {
     if (this.library.assets().get(media.id)?.missing) {

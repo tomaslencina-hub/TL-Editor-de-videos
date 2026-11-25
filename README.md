@@ -70,6 +70,12 @@ Flujo: trabajar en `dev` → `git checkout test && git merge dev && git push` �
    ▲/▼ en el encabezado para reordenar pistas.
 10. **Atajos**: `Espacio` play/pausa, `←`/`→` cuadro a cuadro, `Ctrl+Z`/`Ctrl+Y`, `Ctrl+S` guardar, `Ctrl+E` exportar.
 
+**Importar de Filmora** (botón de claqueta o *Archivo → Importar proyecto de Filmora*): convierte un `.wfp`
+(probado con Filmora 14) con sus pistas, clips, recortes, velocidad, volumen, fundidos, posición/escala y el texto de
+los títulos. No se importan transiciones, filtros, máscaras ni elementos de la biblioteca de Filmora (se listan).
+Si los archivos están en otra ruta (otra PC), *Buscar archivos…* pide una carpeta y los vincula por nombre;
+el aviso "Faltan N archivos" del panel de medios hace lo mismo para cualquier proyecto.
+
 **Sesión automática**: la app guarda sola el estado de edición (proyecto, archivo abierto, playhead y zoom) en
 `%APPDATA%SHOTONsession.json` y al abrirla te deja donde estabas, aunque no hayas guardado el `.vproj` o se haya
 cerrado de golpe. El punto amarillo junto al nombre sigue indicando cambios sin guardar en el archivo del proyecto.

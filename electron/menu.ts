@@ -12,6 +12,7 @@ export function buildMenu(getWindow: () => BrowserWindow | null): Menu {
         { label: 'Abrir proyecto…', accelerator: 'CmdOrCtrl+O', click: send('open') },
         { label: 'Guardar', accelerator: 'CmdOrCtrl+S', click: send('save') },
         { label: 'Guardar como…', accelerator: 'CmdOrCtrl+Shift+S', click: send('save-as') },
+        { label: 'Importar proyecto de Filmora (.wfp)…', click: send('import-filmora') },
         { type: 'separator' },
         { label: 'Importar medios…', accelerator: 'CmdOrCtrl+I', click: send('import') },
         { label: 'Exportar MP4…', accelerator: 'CmdOrCtrl+E', click: send('export') },

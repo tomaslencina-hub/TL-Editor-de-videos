@@ -43,6 +43,9 @@ const api: TlApi = {
   onSubtitleProgress: (cb) => subscribe<SubtitleProgress>('subtitles:progress', cb),
   saveSrt: (segments, name) => invoke('subtitles:save-srt', segments, name),
 
+  importFilmora: () => invoke('import:filmora'),
+  findMedia: (names) => invoke('media:find', names),
+
   loadSession: () => invoke('session:load'),
   saveSession: (data) => ipcRenderer.send('session:save' satisfies IpcChannel, data),
   saveSessionSync: (data) => {

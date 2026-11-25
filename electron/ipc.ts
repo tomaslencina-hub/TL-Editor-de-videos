@@ -6,6 +6,7 @@ import { validateProject, type Project } from '../shared/model';
 import { ExportManager } from './ffmpeg/export';
 import { makeIntermediate } from './ffmpeg/intermediate';
 import { SubtitleTranscriber, toSrt } from './ffmpeg/transcribe';
+import { findFilesByName, importFilmora } from './import/filmora';
 import { probe } from './ffmpeg/probe';
 import { thumbnail } from './ffmpeg/thumbnail';
 import { waveform } from './ffmpeg/waveform';
@@ -105,6 +106,29 @@ export function registerIpc(getWindow: () => BrowserWindow | null): void {
     if (res.canceled || !res.filePath) return null;
     await fs.promises.writeFile(res.filePath, toSrt(segments), 'utf8');
     return res.filePath;
+  });
+
+  ipcMain.handle('import:filmora', async () => {
+    const win = getWindow();
+    const opts: Electron.OpenDialogOptions = {
+      title: 'Importar proyecto de Filmora',
+      properties: ['openFile'],
+      filters: [{ name: 'Proyecto de Filmora', extensions: ['wfp'] }],
+    };
+    const res = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
+    if (res.canceled || !res.filePaths.length) return null;
+    return importFilmora(res.filePaths[0]);
+  });
+
+  ipcMain.handle('media:find', async (_e, names: string[]) => {
+    const win = getWindow();
+    const opts: Electron.OpenDialogOptions = {
+      title: 'Elegí la carpeta donde están los archivos',
+      properties: ['openDirectory'],
+    };
+    const res = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
+    if (res.canceled || !res.filePaths.length) return null;
+    return findFilesByName(res.filePaths[0], names);
   });
 
   ipcMain.handle('export:pick-path', async (_e, suggestedName: string) => {

@@ -7,6 +7,7 @@ import { SessionService } from './core/state/session.service';
 import { TimelineViewService } from './features/timeline/timeline-view.service';
 import { ExportDialog } from './features/export-dialog/export-dialog';
 import { SubtitlesDialog } from './features/subtitles-dialog/subtitles-dialog';
+import { ImportReportDialog } from './features/import-report/import-report';
 import { Library } from './features/library/library';
 import { Preview } from './features/preview/preview';
 import { Timeline } from './features/timeline/timeline';
@@ -15,7 +16,7 @@ import { Toolbar } from './features/toolbar/toolbar';
 
 @Component({
   selector: 'app-root',
-  imports: [Toolbar, Library, Preview, Timeline, ExportDialog, SubtitlesDialog, Toasts],
+  imports: [Toolbar, Library, Preview, Timeline, ExportDialog, SubtitlesDialog, ImportReportDialog, Toasts],
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })

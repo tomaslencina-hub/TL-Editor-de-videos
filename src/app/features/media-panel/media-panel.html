@@ -3,6 +3,15 @@
   <button (click)="actions.importDialog()" title="Importar medios (Ctrl+I)"><app-icon name="plus" [size]="15" /> Importar</button>
 </header>
 
+@if (missingCount() > 0) {
+  <div class="missing-bar">
+    <span>Faltan {{ missingCount() }} archivo(s)</span>
+    <button (click)="actions.relinkMissing()" title="Elegir la carpeta donde están (se buscan por nombre)">
+      <app-icon name="folder-open" [size]="14" /> Buscar…
+    </button>
+  </div>
+}
+
 <div class="list">
   @for (m of store.project().media; track m.id) {
     @let assets = library.assets().get(m.id);

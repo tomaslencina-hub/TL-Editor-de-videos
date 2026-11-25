@@ -70,6 +70,15 @@ export interface SubtitleProgress {
   ratio: number;
 }
 
+/** Resultado de importar un proyecto de Filmora. */
+export interface ImportResult {
+  project: Project;
+  warnings: string[];
+  /** Rutas originales de medios que no existen en esta computadora. */
+  missing: string[];
+  stats: { clips: number; texts: number; media: number };
+}
+
 /** Estado de edición que se recupera al volver a abrir la app. */
 export interface SessionData {
   version: 1;
@@ -108,7 +117,8 @@ export type MenuAction =
   | 'import'
   | 'export'
   | 'undo'
-  | 'redo';
+  | 'redo'
+  | 'import-filmora';
 
 export interface TlApi {
   /** Abre el diálogo de importación y devuelve rutas elegidas (vacío si se cancela). */
@@ -149,6 +159,14 @@ export interface TlApi {
   /** Guarda un archivo .srt (abre el diálogo). Devuelve la ruta o null si se cancela. */
   saveSrt(segments: SubtitleSegment[], suggestedName: string): Promise<string | null>;
 
+  /** Abre el diálogo y convierte un proyecto de Filmora (.wfp). null si se cancela. */
+  importFilmora(): Promise<ImportResult | null>;
+  /**
+   * Pide una carpeta y busca ahí (y en subcarpetas) archivos con esos nombres.
+   * Devuelve nombre en minúsculas → ruta encontrada, o null si se cancela.
+   */
+  findMedia(names: string[]): Promise<Record<string, string> | null>;
+
   loadSession(): Promise<SessionData | null>;
   /** Guardado en segundo plano (no espera respuesta). */
   saveSession(data: SessionData): void;
@@ -186,6 +204,8 @@ export type IpcChannel =
   | 'subtitles:cancel'
   | 'subtitles:progress'
   | 'subtitles:save-srt'
+  | 'import:filmora'
+  | 'media:find'
   | 'session:load'
   | 'session:save'
   | 'session:save-sync'

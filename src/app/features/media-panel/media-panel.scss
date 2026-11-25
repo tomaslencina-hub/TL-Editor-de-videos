@@ -124,3 +124,21 @@ header {
   font-style: italic;
   padding: 4px;
 }
+
+.missing-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 8px 8px 0;
+  padding: 6px 8px 6px 12px;
+  border-radius: var(--radius);
+  background: rgb(229 83 75 / 15%);
+  border: 1px solid rgb(229 83 75 / 45%);
+  color: #ffb3ae;
+  font-size: 12px;
+  button {
+    padding: 3px 8px;
+    font-size: 12px;
+  }
+}

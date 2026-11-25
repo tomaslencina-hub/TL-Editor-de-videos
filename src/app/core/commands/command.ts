@@ -24,6 +24,8 @@ export const Commands = {
       return settings ? ops.updateSettings(withMedia, settings) : withMedia;
     }),
 
+  relinkMedia: (paths: Record<Id, string>) => cmd('Vincular archivos', (p) => ops.relinkMedia(p, paths)),
+
   removeMedia: (sourceId: Id) => cmd('Quitar medio', (p) => ops.removeMedia(p, sourceId)),
 
   insertClip: (trackId: Id, clip: Clip) => cmd('Agregar clip', (p) => ops.insertClip(p, trackId, clip)),

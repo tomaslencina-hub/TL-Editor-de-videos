@@ -282,6 +282,12 @@ export function moveTrack(project: Project, trackId: Id, direction: -1 | 1): Pro
   return { ...project, tracks };
 }
 
+/** Cambia la ruta de medios (archivos movidos o de otra computadora). */
+export function relinkMedia(project: Project, paths: Record<Id, string>): Project {
+  if (!Object.keys(paths).length) return project;
+  return { ...project, media: project.media.map((m) => (paths[m.id] ? { ...m, path: paths[m.id] } : m)) };
+}
+
 export function addMedia(project: Project, media: MediaSource[]): Project {
   return { ...project, media: [...project.media, ...media] };
 }
