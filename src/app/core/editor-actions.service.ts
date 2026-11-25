@@ -79,10 +79,10 @@ export class EditorActionsService {
   }
 
   /** Convierte un proyecto de Filmora (.wfp) y lo abre como proyecto nuevo (sin guardar). */
-  async importFilmora(): Promise<void> {
+  async importFilmora(path?: string): Promise<void> {
     if (!this.confirmDiscard()) return;
     try {
-      const res = await this.api.importFilmora();
+      const res = await this.api.importFilmora(path);
       if (!res) return;
       this.playback.pause();
       this.playback.seek(0);
@@ -93,6 +93,7 @@ export class EditorActionsService {
         title: `Importado de Filmora: ${p.name}`,
         summary: [
           `${res.stats.clips} clips de video, audio e imagen y ${res.stats.texts} títulos en ${p.tracks.length} pistas.`,
+          `${res.stats.transitions} transiciones${res.stats.effects ? ` y ${res.stats.effects} efecto(s) animado(s)` : ''}.`,
           `${p.settings.width}×${p.settings.height} a ${p.settings.fps} fps, ${res.stats.media} archivos de medios.`,
           'Guardalo con Ctrl+S para tenerlo como proyecto de SHOTON (.vproj).',
         ],
@@ -135,6 +136,13 @@ export class EditorActionsService {
   }
 
   async importPaths(paths: string[]): Promise<void> {
+    // Un proyecto de Filmora soltado en la app se importa como proyecto, no como medio.
+    const wfp = paths.find((p) => /\.wfp$/i.test(p));
+    if (wfp) {
+      paths = paths.filter((p) => p !== wfp);
+      await this.importFilmora(wfp);
+    }
+    if (!paths.length) return;
     const report = await this.library.importPaths(paths);
     for (const err of report.errors) {
       this.notify.error(`${err.path.split(/[\\/]/).pop()}: ${err.message}`);

@@ -9,14 +9,19 @@ import {
   type Project,
   type Track,
 } from '../../shared/model';
+import { EQ_LABELS, type AudioFx } from '../../shared/audio-fx';
+import { makeOverlay, OVERLAY_LABELS, type OverlayType } from '../../shared/effects';
 import { DEFAULT_TEXT } from '../../shared/text';
+import { TRANSITION_LABELS, type TransitionType } from '../../shared/transitions';
 import { ZipReader } from './zip';
 
 /**
  * Importa un proyecto de Wondershare Filmora (.wfp, probado con Filmora 14).
  * El .wfp es un ZIP; la timeline está en ProjectFolder/Medias/<id>/timeline.wesproj (JSON).
  * Tiempos en unidades de 100 ns. Se importan videos, audios, imágenes, recortes, volumen, fundidos,
- * posición/escala y los textos de los títulos; lo propio de Filmora (stickers, filtros) se reporta.
+ * posición/escala, espejado, transiciones (con la equivalente más parecida), limpieza y ecualizador
+ * de audio, textos y animaciones de títulos. Lo propio de la biblioteca de Filmora (stickers, packs)
+ * se reemplaza por un efecto de SHOTON si hay uno parecido; si no, se reporta.
  */
 
 const TU = 1e7; // unidades por segundo
@@ -28,7 +33,7 @@ export interface FilmoraImportResult {
   warnings: string[];
   /** Medios cuyo archivo no existe en esta computadora (rutas originales). */
   missing: string[];
-  stats: { clips: number; texts: number; media: number };
+  stats: { clips: number; texts: number; media: number; transitions: number; effects: number };
 }
 
 interface FxParam {
@@ -52,6 +57,17 @@ interface FClip {
   scriptBuf?: string;
   effectChainList?: { effectList?: FxEffect[] }[];
   userData?: { data?: string }[];
+  preTransition?: FTransition;
+  postTransition?: FTransition;
+  inAnimation?: { name?: string };
+  enableV3Denoise?: boolean;
+  denoiseV3Strength?: number;
+}
+interface FTransition {
+  id?: string;
+  display?: string;
+  tlBegin: number;
+  tlEnd: number;
 }
 interface FTrack {
   trackType: number;
@@ -110,6 +126,15 @@ function libraryName(clip: FClip): string | null {
   return null;
 }
 
+/** Nombre de un efecto de biblioteca aplicado al clip (cadena "Effect", identificado por GUID). */
+function libraryEffectName(clip: FClip): string | null {
+  for (const chain of clip.effectChainList ?? []) {
+    const e = chain.effectList?.find((x) => x.display && !/^(video|audio)\//.test(x.id ?? ''));
+    if (e?.display) return e.display;
+  }
+  return null;
+}
+
 /** Texto de un título: Filmora usa \r como salto y rellena con espacios. */
 function cleanTitle(text: string): string {
   return text
@@ -117,6 +142,65 @@ function cleanTitle(text: string): string {
     .map((l) => l.trim())
     .filter(Boolean)
     .join('\n');
+}
+
+/**
+ * Transición de Filmora → la de SHOTON más parecida. `exact` = mismo efecto visual; si no, es una
+ * aproximación (packs de Filmora con diseños propios) y se reporta.
+ */
+const TRANSITION_MAP: { re: RegExp; type: TransitionType; exact: boolean }[] = [
+  { re: /black|negro/i, type: 'fadeblack', exact: true },
+  { re: /dissolve|disolv|^fade|cross ?fade|fundido/i, type: 'fade', exact: true },
+  { re: /zoom/i, type: 'zoomin', exact: true },
+  { re: /^push|^slide/i, type: 'slideleft', exact: true },
+  { re: /moverect|^wipe|barrido/i, type: 'wipeleft', exact: true },
+  { re: /circle|iris/i, type: 'circleopen', exact: true },
+  { re: /radial|clock/i, type: 'radial', exact: true },
+  { re: /pixel|mosaic/i, type: 'pixelize', exact: true },
+  { re: /cube|page ?flip|turn/i, type: 'slideleft', exact: false },
+  { re: /door/i, type: 'wiperight', exact: false },
+];
+
+function transitionFor(t: FTransition): { type: TransitionType; exact: boolean; name: string } {
+  const name = (t.display ?? t.id ?? 'Transición').trim();
+  // Los fundidos de audio de Filmora son un fundido cruzado simple.
+  if (/^audio\//.test(t.id ?? '')) return { type: 'fade', exact: true, name };
+  const hit = TRANSITION_MAP.find((m) => m.re.test(name));
+  if (hit) return { type: hit.type, exact: hit.exact, name };
+  return { type: 'fade', exact: false, name };
+}
+
+/** Elemento de la biblioteca de Filmora → efecto animado de SHOTON parecido (o null). */
+function overlayFor(name: string): OverlayType | null {
+  if (/firework|festival|celebrat/i.test(name)) return 'fireworks';
+  if (/heart|love|valentin/i.test(name)) return 'hearts';
+  if (/confetti|party/i.test(name)) return 'confetti';
+  if (/snow|winter|christmas/i.test(name)) return 'snow';
+  if (/bubble/i.test(name)) return 'bubbles';
+  if (/sparkl|glitter|particle|star|shine|bokeh/i.test(name)) return 'sparkles';
+  return null;
+}
+
+/** Limpieza de audio, ecualizador y balance de Filmora → AudioFx de SHOTON. */
+function audioFxFor(c: FClip): AudioFx | undefined {
+  const fx: AudioFx = {};
+  const on = (id: string) => {
+    const e = effect(c, id);
+    return !!e && e.enable !== false;
+  };
+  if (c.enableV3Denoise) fx.denoise = Math.min(1, Math.max(0.1, (c.denoiseV3Strength ?? 50) / 100));
+  if (on('audio/effect/dewind')) fx.dewind = true;
+  if (on('audio/effect/dehum')) fx.dehum = true;
+  if (on('audio/effect/hiss_denoise')) fx.dehiss = true;
+  const eqFx = effect(c, 'audio/effect/equalizer');
+  if (eqFx && eqFx.enable !== false) {
+    const eq = EQ_LABELS.map((l) => param(eqFx, `${l}Hz`) ?? 0);
+    if (eq.some((g) => Math.abs(g) > 0.01)) fx.eq = eq.map((g) => Math.round(Math.max(-12, Math.min(12, g)) * 10) / 10);
+  }
+  const vol = effect(c, 'audio/effect/volume');
+  const bal = param(vol, 'Balance');
+  if (bal !== undefined && Math.abs(bal) > 0.01) fx.pan = Math.max(-1, Math.min(1, bal));
+  return Object.keys(fx).length ? fx : undefined;
 }
 
 export async function importFilmora(wfpPath: string): Promise<FilmoraImportResult> {
@@ -207,7 +291,74 @@ export async function importFilmora(wfpPath: string): Promise<FilmoraImportResul
       if (rot) t.rotation = rot;
       if (Object.keys(t).length) clip.transform = t;
     }
+    if (m.hasVideo) {
+      const enabled = (id: string) => {
+        const e = effect(c, id);
+        return !!e && e.enable !== false;
+      };
+      if (enabled('video/effect/horizontal_filp')) clip.flipH = true;
+      if (enabled('video/effect/vertical_filp')) clip.flipV = true;
+    }
+    if (m.hasAudio) {
+      const fx = audioFxFor(c);
+      if (fx) clip.audioFx = fx;
+    }
+    if (c.preTransition || c.postTransition) pendingTransitions.set(clip, { pre: c.preTransition, post: c.postTransition });
     return clip;
+  };
+
+  // ---------------- transiciones ----------------
+  const pendingTransitions = new Map<Clip, { pre?: FTransition; post?: FTransition }>();
+  let transitionCount = 0;
+  const approximated = new Map<string, { n: number; type: TransitionType }>();
+  const toTransition = (ft: FTransition) => {
+    const r = transitionFor(ft);
+    if (!r.exact) {
+      const a = approximated.get(r.name);
+      approximated.set(r.name, { n: (a?.n ?? 0) + 1, type: r.type });
+    }
+    transitionCount++;
+    return { type: r.type, duration: Math.max(0.1, Math.round(((ft.tlEnd - ft.tlBegin) / TU) * 100) / 100) };
+  };
+  /**
+   * Filmora guarda la transición en el clip de la izquierda ("post") o de la derecha ("pre"), centrada
+   * en el corte. En SHOTON la cruzada va en `transitionIn` del clip de la derecha; si no hay clip pegado,
+   * queda como entrada/salida desde lo de abajo.
+   */
+  const applyTransitions = (clips: Clip[]) => {
+    clips.forEach((clip, i) => {
+      const p = pendingTransitions.get(clip);
+      if (!p) return;
+      if (p.pre && !clip.transitionIn) clip.transitionIn = toTransition(p.pre);
+      if (p.post) {
+        const next = clips[i + 1];
+        const end = clip.start + (clip.outPoint - clip.inPoint) / (clip.speed ?? 1);
+        if (next && Math.abs(next.start - end) < 0.02) {
+          if (!next.transitionIn) next.transitionIn = toTransition(p.post);
+        } else if (!clip.transitionOut) {
+          clip.transitionOut = toTransition(p.post);
+        }
+      }
+    });
+  };
+
+  /** Animación de entrada de un título de Filmora → la de SHOTON más parecida. */
+  const titleAnimation = (c: FClip): Partial<typeof DEFAULT_TEXT> => {
+    const name = c.inAnimation?.name;
+    if (!name) return {};
+    const animIn = /rotat|spin|turn|roll/i.test(name)
+      ? 'spin'
+      : /typ(e|ing)/i.test(name)
+        ? 'typewriter'
+        : /pop|bounce|zoom|scale/i.test(name)
+          ? 'pop'
+          : /down/i.test(name)
+            ? 'slide-down'
+            : /up|rise|slide/i.test(name)
+              ? 'slide-up'
+              : 'fade';
+    if (animIn === 'fade' && !/fade|appear|dissolve/i.test(name)) note(`Animación de título "${name}" (se usó Fundido)`);
+    return { animIn, animDuration: 0.8 };
   };
 
   /** Clip compuesto (tipo 7): títulos y grupos viven en otra timeline; se "aplanan". */
@@ -245,7 +396,7 @@ export async function importFilmora(wfpPath: string): Promise<FilmoraImportResul
             start: (b + offset) / TU,
             inPoint: 0,
             outPoint: (e - b) / TU,
-            text: { ...DEFAULT_TEXT, text, fontSize: 80 },
+            text: { ...DEFAULT_TEXT, text, fontSize: 80, ...titleAnimation(inner) },
             transform: { x: px !== undefined ? px - 0.5 : 0, y: py !== undefined ? py - 0.5 : 0 },
           });
         } else if (inner.filename) {
@@ -274,17 +425,35 @@ export async function importFilmora(wfpPath: string): Promise<FilmoraImportResul
   const videoTracks: Track[] = [];
   const audioTracks: Track[] = [];
   let textCount = 0;
+  let effectCount = 0;
+  const substituted: string[] = [];
   main.trackInfos.forEach((ftr, i) => {
     const isVideo = ftr.trackType === 1;
     const clips: Clip[] = [];
     const texts: Clip[] = [];
+    const effects: Clip[] = [];
     for (const c of ftr.clipList) {
       if (c.type === 7) {
         const r = expandCompound(c);
         clips.push(...r.clips);
         texts.push(...r.texts);
       } else if (c.type === 8) {
-        note(`Elemento de la biblioteca de Filmora: ${libraryName(c) ?? 'sin nombre'}`);
+        const name = libraryEffectName(c) ?? libraryName(c) ?? 'sin nombre';
+        const type = overlayFor(name);
+        const dur = (c.tlEnd - c.tlBegin) / TU;
+        if (type && dur > 0) {
+          effects.push({
+            id: newId('clip'),
+            sourceId: '',
+            start: c.tlBegin / TU,
+            inPoint: 0,
+            outPoint: dur,
+            overlay: makeOverlay(type, (c.tlBegin / 1e4) % 1e6 | 0),
+          });
+          substituted.push(`${name} → ${OVERLAY_LABELS[type]}`);
+        } else {
+          note(`Elemento de la biblioteca de Filmora sin equivalente: ${name}`);
+        }
       } else {
         const clip = toClip(c);
         if (clip) clips.push(clip);
@@ -292,6 +461,9 @@ export async function importFilmora(wfpPath: string): Promise<FilmoraImportResul
       }
     }
     textCount += texts.length;
+    effectCount += effects.length;
+    clips.sort((a, b) => a.start - b.start);
+    applyTransitions(clips);
     const make = (kind: Track['kind'], name: string, list: Clip[]): Track => ({
       id: newId('track'),
       kind,
@@ -304,6 +476,7 @@ export async function importFilmora(wfpPath: string): Promise<FilmoraImportResul
       // Si una pista mezcla títulos y medios, los títulos van en su propia pista encima.
       if (clips.length) videoTracks.unshift(make('video', `Video ${i + 1}`, clips));
       if (texts.length) videoTracks.unshift(make('video', `Títulos ${i + 1}`, texts));
+      if (effects.length) videoTracks.unshift(make('video', `Efectos ${i + 1}`, effects));
     } else if (clips.length) {
       audioTracks.push(make('audio', `Audio ${audioTracks.length + 1}`, clips));
     }
@@ -311,7 +484,10 @@ export async function importFilmora(wfpPath: string): Promise<FilmoraImportResul
   // Nombres prolijos: se numeran de abajo hacia arriba, como en Filmora.
   let vn = 0;
   let tn = 0;
-  for (const t of [...videoTracks].reverse()) t.name = t.clips.some((c) => c.text) ? `Títulos ${++tn}` : `Video ${++vn}`;
+  let en = 0;
+  for (const t of [...videoTracks].reverse()) {
+    t.name = t.clips.some((c) => c.text) ? `Títulos ${++tn}` : t.clips.every((c) => c.overlay) ? `Efectos ${++en}` : `Video ${++vn}`;
+  }
   if (!videoTracks.length) videoTracks.push({ id: newId('track'), kind: 'video', name: 'Video 1', muted: false, locked: false, clips: [] });
   if (!audioTracks.length) audioTracks.push({ id: newId('track'), kind: 'audio', name: 'Audio 1', muted: false, locked: false, clips: [] });
 
@@ -331,11 +507,22 @@ export async function importFilmora(wfpPath: string): Promise<FilmoraImportResul
     tracks: [...videoTracks, ...audioTracks],
   };
 
+  for (const [name, a] of approximated) {
+    warnings.push(`Transición "${name}"${a.n > 1 ? ` (×${a.n})` : ''} → se usó "${TRANSITION_LABELS[a.type]}"`);
+  }
+  for (const s of substituted) warnings.push(`Efecto "${s}" (aproximado)`);
   for (const [what, n] of unsupported) warnings.push(n > 1 ? `${what} (×${n})` : what);
-  warnings.push('Las transiciones, filtros, máscaras y animaciones de Filmora no se importan.');
+  warnings.push('Las máscaras, los keyframes de animación y los filtros de color de Filmora no se importan.');
   const missing = project.media.map((m) => m.path).filter((p) => !fs.existsSync(p));
   const clipsTotal = project.tracks.reduce((n, t) => n + t.clips.length, 0);
-  return { project, warnings, missing, stats: { clips: clipsTotal - textCount, texts: textCount, media: project.media.length } };
+  return { project, warnings, missing, stats: {
+      clips: clipsTotal - textCount - effectCount,
+      texts: textCount,
+      media: project.media.length,
+      transitions: transitionCount,
+      effects: effectCount,
+    },
+  };
 }
 
 /**

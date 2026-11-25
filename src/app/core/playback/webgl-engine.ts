@@ -1,5 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { audioGain } from '../../../../shared/animation';
+import { AudioFxChain } from './audio-fx-chain';
 import { clipDuration, clipSpeed, type MediaSource, type Project, type Track } from '../../../../shared/model';
 import { TL_API } from '../ipc/tl-api';
 import { MediaLibraryService } from '../media/media-library.service';
@@ -23,6 +24,8 @@ interface Slot {
   el: HTMLMediaElement;
   /** Ganancia (Web Audio): permite volumen > 100 % y fundidos sin tocar el elemento. */
   gain: GainNode | null;
+  /** Limpieza/ecualizador/balance del audio del clip (antes de la ganancia). */
+  fx: AudioFxChain | null;
   clipId: string | null;
   /** Clip cuyo cuadro está en la textura de este slot. */
   textureClipId: string | null;
@@ -164,7 +167,7 @@ export class WebGLEngine implements PlaybackEngine {
       if (this.outputs.has(track.id)) continue;
       const make = (): Slot => {
         const el = this.createElement(track.kind);
-        return { el, gain: this.connectAudio(el), clipId: null, textureClipId: null };
+        return { el, ...this.connectAudio(el), clipId: null, textureClipId: null };
       };
       this.outputs.set(track.id, { kind: track.kind, slots: [make(), make()] });
     }
@@ -188,15 +191,17 @@ export class WebGLEngine implements PlaybackEngine {
   private audioCtx: AudioContext | null = null;
 
   /** Enruta el audio del elemento por un GainNode (necesita CORS: el protocolo media:// lo habilita). */
-  private connectAudio(el: HTMLMediaElement): GainNode | null {
+  private connectAudio(el: HTMLMediaElement): { gain: GainNode | null; fx: AudioFxChain | null } {
     try {
       this.audioCtx ??= new AudioContext();
       const gain = this.audioCtx.createGain();
-      this.audioCtx.createMediaElementSource(el).connect(gain).connect(this.audioCtx.destination);
-      return gain;
+      const fx = new AudioFxChain(this.audioCtx);
+      this.audioCtx.createMediaElementSource(el).connect(fx.input);
+      fx.output.connect(gain).connect(this.audioCtx.destination);
+      return { gain, fx };
     } catch (e) {
       console.warn('Web Audio no disponible, se usa el volumen del elemento', e);
-      return null;
+      return { gain: null, fx: null };
     }
   }
 
@@ -245,6 +250,7 @@ export class WebGLEngine implements PlaybackEngine {
       volume *= audioGain(layer.clip, time - layer.clip.start, clipDuration(layer.clip));
       const muted = track.muted || !!layer.clip.audioMuted;
       this.syncSlot(slot, layer, media, time, playing, project.settings.fps);
+      slot.fx?.apply(layer.clip.audioFx);
       if (slot.gain) {
         slot.el.muted = false;
         slot.el.volume = 1;

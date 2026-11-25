@@ -74,6 +74,8 @@ export const Commands = {
 
   setClipAudio: (clipId: Id, patch: ops.ClipAudioPatch) => cmd('Cambiar audio', (p) => ops.setClipFields(p, clipId, patch)),
 
+  setFlip: (clipId: Id, patch: Pick<ops.ClipAudioPatch, 'flipH' | 'flipV'>) => cmd('Espejar', (p) => ops.setClipFields(p, clipId, patch)),
+
   setSpeed: (clipId: Id, speed: number) => cmd('Cambiar velocidad', (p) => ops.setClipSpeed(p, clipId, speed)),
 
   detachAudio: (clipId: Id) => cmd('Separar audio', (p) => ops.detachAudio(p, clipId).project),

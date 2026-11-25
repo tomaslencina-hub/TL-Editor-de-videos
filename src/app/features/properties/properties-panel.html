@@ -143,7 +143,11 @@
     <section>
       <div class="section-title">
         <span>Transformación</span>
-        <button class="link" (click)="reset('transform')" title="Restablecer transformación">Restablecer</button>
+        <span class="title-actions">
+          <button class="icon small tog" [class.active]="!!clip.flipH" (click)="flip('flipH')" title="Espejar horizontalmente"><app-icon name="flip-h" [size]="14" /></button>
+          <button class="icon small tog" [class.active]="!!clip.flipV" (click)="flip('flipV')" title="Espejar verticalmente"><app-icon name="flip-v" [size]="14" /></button>
+          <button class="link" (click)="reset('transform')" title="Restablecer transformación">Restablecer</button>
+        </span>
       </div>
       @for (row of transformRows; track row.prop) {
         <ng-container [ngTemplateOutlet]="propRow" [ngTemplateOutletContext]="{ $implicit: row }" />
@@ -214,6 +218,64 @@
         <input type="checkbox" [checked]="!!sel.clip()?.audioMuted" (change)="setAudio({ audioMuted: $any($event.target).checked })" />
         Silenciar el audio de este clip
       </label>
+    </section>
+
+    <section class="audio-fx">
+      <div class="section-title">
+        <span><app-icon name="audio-lines" [size]="14" /> Limpieza y ecualizador</span>
+        @if (fxActive()) {
+          <button class="link" (click)="setFx(null)" title="Quitar limpieza, ecualizador y balance">Restablecer</button>
+        }
+      </div>
+      <div class="row">
+        <label>Reducir ruido</label>
+        <input type="range" min="0" max="100" step="5" [value]="(fx().denoise ?? 0) * 100" (input)="setFx({ denoise: +$any($event.target).value / 100 }, 'fx-denoise')" />
+        <span class="val">{{ ((fx().denoise ?? 0) * 100).toFixed(0) }}</span><span class="unit">%</span><span></span>
+      </div>
+      <div class="checks">
+        <label class="chk" title="Corta los graves donde está el ruido de viento">
+          <input type="checkbox" [checked]="!!fx().dewind" (change)="setFx({ dewind: $any($event.target).checked })" /> Viento
+        </label>
+        <label class="chk" title="Quita el zumbido eléctrico de 50/60 Hz">
+          <input type="checkbox" [checked]="!!fx().dehum" (change)="setFx({ dehum: $any($event.target).checked })" /> Zumbido
+        </label>
+        <label class="chk" title="Baja el siseo agudo constante">
+          <input type="checkbox" [checked]="!!fx().dehiss" (change)="setFx({ dehiss: $any($event.target).checked })" /> Siseo
+        </label>
+      </div>
+      @if ((fx().denoise ?? 0) > 0) {
+        <p class="hint">La reducción de ruido se escucha en el video exportado (en la vista previa no).</p>
+      }
+      <div class="row">
+        <label>Balance</label>
+        <input type="range" min="-100" max="100" step="1" [value]="(fx().pan ?? 0) * 100" (input)="setFx({ pan: +$any($event.target).value / 100 }, 'fx-pan')" (dblclick)="setFx({ pan: 0 })" title="Doble clic: centrar" />
+        <span class="val">{{ panLabel() }}</span><span class="unit"></span><span></span>
+      </div>
+      <div class="eq-head">
+        <label>Ecualizador</label>
+        <select (change)="eqPreset($any($event.target).value)">
+          <option value="" [selected]="!eqPresetId()">{{ eqPresetId() ? '' : 'Personalizado' }}</option>
+          @for (p of eqPresets; track p.id) {
+            <option [value]="p.id" [selected]="p.id === eqPresetId()">{{ p.label }}</option>
+          }
+        </select>
+      </div>
+      <div class="eq">
+        @for (label of eqLabels; track $index) {
+          <div class="band" [title]="label + ' Hz: ' + eqGain($index).toFixed(1) + ' dB'">
+            <input
+              type="range"
+              min="-12"
+              max="12"
+              step="0.5"
+              [value]="eqGain($index)"
+              (input)="setBand($index, +$any($event.target).value)"
+              (dblclick)="setBand($index, 0)"
+            />
+            <span>{{ label }}</span>
+          </div>
+        }
+      </div>
     </section>
   }
 

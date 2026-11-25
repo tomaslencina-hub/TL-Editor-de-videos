@@ -5,7 +5,7 @@
  * y se escalan a la resolución del proyecto, así el texto se ve igual en 720p o 4K.
  */
 
-export const TEXT_ANIMATIONS = ['none', 'fade', 'slide-up', 'slide-down', 'pop', 'typewriter'] as const;
+export const TEXT_ANIMATIONS = ['none', 'fade', 'slide-up', 'slide-down', 'pop', 'spin', 'typewriter'] as const;
 export type TextAnimation = (typeof TEXT_ANIMATIONS)[number];
 
 export const TEXT_ANIMATION_LABELS: Record<TextAnimation, string> = {
@@ -14,6 +14,7 @@ export const TEXT_ANIMATION_LABELS: Record<TextAnimation, string> = {
   'slide-up': 'Deslizar hacia arriba',
   'slide-down': 'Deslizar hacia abajo',
   pop: 'Pop',
+  spin: 'Girar',
   typewriter: 'Máquina de escribir',
 };
 
@@ -150,6 +151,8 @@ export interface TextAnimState {
   /** Desplazamiento (fracción del alto del cuadro). */
   dy: number;
   scale: number;
+  /** Rotación extra (grados). */
+  rotation: number;
   /** Fracción de caracteres visibles (máquina de escribir). */
   reveal: number;
 }
@@ -179,6 +182,13 @@ function apply(state: TextAnimState, anim: TextAnimation, p: number): void {
       state.opacity *= Math.min(1, k * 3);
       state.scale *= 0.5 + 0.5 * easeOutBack(k);
       break;
+    case 'spin': {
+      const e = easeOut(k);
+      state.opacity *= Math.min(1, k * 2.5);
+      state.rotation -= (1 - e) * 90;
+      state.scale *= 0.4 + 0.6 * e;
+      break;
+    }
     case 'typewriter':
       state.reveal = Math.min(state.reveal, k);
       break;
@@ -186,7 +196,7 @@ function apply(state: TextAnimState, anim: TextAnimation, p: number): void {
 }
 
 export function textAnimation(text: TextContent, clipTime: number, clipDuration: number): TextAnimState {
-  const state: TextAnimState = { opacity: 1, dy: 0, scale: 1, reveal: 1 };
+  const state: TextAnimState = { opacity: 1, dy: 0, scale: 1, rotation: 0, reveal: 1 };
   const d = Math.max(0.01, Math.min(text.animDuration, clipDuration / 2));
   if (text.animIn !== 'none') apply(state, text.animIn, clipTime / d);
   if (text.animOut !== 'none') apply(state, text.animOut, (clipDuration - clipTime) / d);

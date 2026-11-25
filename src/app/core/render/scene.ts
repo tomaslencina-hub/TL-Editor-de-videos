@@ -67,8 +67,9 @@ export function toTrackDraws(
         transform.opacity *= anim.opacity;
         transform.y += anim.dy;
         transform.scale *= anim.scale;
+        transform.rotation += anim.rotation;
       }
-      return { ...src, transform, adjust };
+      return { ...src, transform, adjust, flipX: !!layer.clip.flipH, flipY: !!layer.clip.flipV };
     };
     if (p.transition) {
       const from = p.layers.find((l) => l.role === 'from');

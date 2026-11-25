@@ -86,10 +86,15 @@ const TRANSITION_GLSL: Record<TransitionType, string> = {
     float s = atan(x - W * 0.5, y - H * 0.5) - (P - 0.5) * (3.14159265 * 2.5);
     c = xmix(b, a, smoothstep(0.0, 1.0, s));`,
   zoomin: `
-    float zf = smoothstep(0.5, 1.0, P);
-    vec2 uv = zf * (px / vec2(W, H) - 0.5) + 0.5;
-    vec4 f1 = A(uv * vec2(W, H));
-    c = xmix(f1, b, smoothstep(0.0, 0.5, P));`,
+    // La de xfade acerca A hasta un solo píxel (destello de un color); acá A se acerca hasta 3×,
+    // B llega desde 1,5× y se funden en el medio.
+    float q = 1.0 - P;
+    vec2 rel = px / vec2(W, H) - 0.5;
+    float za = 1.0 / (1.0 + 2.0 * smoothstep(0.0, 1.0, q));
+    float zb = 1.0 / (1.0 + 0.5 * (1.0 - smoothstep(0.0, 1.0, q)));
+    vec4 fa = A((za * rel + 0.5) * vec2(W, H));
+    vec4 fb = B((zb * rel + 0.5) * vec2(W, H));
+    c = xmix(fa, fb, smoothstep(0.3, 0.7, P));`,
   pixelize: `
     float d = min(P, 1.0 - P);
     float dist = ceil(d * 50.0) / 50.0;

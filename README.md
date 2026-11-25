@@ -68,11 +68,17 @@ Flujo: trabajar en `dev` → `git checkout test && git merge dev && git push` �
 9. **Edición**: Ctrl/Shift + clic para seleccionar varios clips; `Ctrl+C`/`Ctrl+X`/`Ctrl+V` (pega en el playhead),
    `Ctrl+D` duplicar, `Shift+Supr` borrar cerrando el hueco, `M` marcador (clic derecho sobre él para quitarlo),
    ▲/▼ en el encabezado para reordenar pistas.
-10. **Atajos**: `Espacio` play/pausa, `←`/`→` cuadro a cuadro, `Ctrl+Z`/`Ctrl+Y`, `Ctrl+S` guardar, `Ctrl+E` exportar.
+10. **Audio**: en *Propiedades* → *Limpieza y ecualizador*: reducción de ruido (se aplica al exportar), quitar viento,
+    zumbido y siseo, balance izquierda/derecha y ecualizador de 10 bandas con estilos prearmados.
+    En *Transformación*, los botones de espejado dan vuelta la imagen horizontal o verticalmente.
+11. **Atajos**: `Espacio` play/pausa, `←`/`→` cuadro a cuadro, `Ctrl+Z`/`Ctrl+Y`, `Ctrl+S` guardar, `Ctrl+E` exportar.
 
-**Importar de Filmora** (botón de claqueta o *Archivo → Importar proyecto de Filmora*): convierte un `.wfp`
-(probado con Filmora 14) con sus pistas, clips, recortes, velocidad, volumen, fundidos, posición/escala y el texto de
-los títulos. No se importan transiciones, filtros, máscaras ni elementos de la biblioteca de Filmora (se listan).
+**Importar de Filmora** (botón de claqueta, *Archivo → Importar proyecto de Filmora* o soltando el `.wfp` en la
+ventana): convierte el proyecto (probado con Filmora 14) con sus pistas, clips, recortes, velocidad, volumen, fundidos,
+posición/escala, espejado, transiciones de video y de audio, limpieza de audio (ruido, viento, zumbido, siseo),
+ecualizador, balance y los títulos con su animación de entrada. Las transiciones y efectos de los packs de Filmora se
+reemplazan por el equivalente más parecido de SHOTON; lo que no tiene equivalente (máscaras, filtros de color,
+overlays de la biblioteca) se lista en el resumen.
 Si los archivos están en otra ruta (otra PC), *Buscar archivos…* pide una carpeta y los vincula por nombre;
 el aviso "Faltan N archivos" del panel de medios hace lo mismo para cualquier proyecto.
 

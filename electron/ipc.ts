@@ -108,7 +108,12 @@ export function registerIpc(getWindow: () => BrowserWindow | null): void {
     return res.filePath;
   });
 
-  ipcMain.handle('import:filmora', async () => {
+  ipcMain.handle('import:filmora', async (_e, dropped?: unknown) => {
+    // Archivo soltado sobre la ventana: se importa directo, sin diálogo.
+    if (typeof dropped === 'string') {
+      if (!/\.wfp$/i.test(dropped)) throw new Error('El archivo no es un proyecto de Filmora (.wfp).');
+      return importFilmora(dropped);
+    }
     const win = getWindow();
     const opts: Electron.OpenDialogOptions = {
       title: 'Importar proyecto de Filmora',

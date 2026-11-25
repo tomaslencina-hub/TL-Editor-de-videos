@@ -400,7 +400,7 @@ export function setTransition(project: Project, clipId: Id, edge: ClipEdge, tran
 
 // ---------------------------------------------------------------------------- audio y velocidad
 
-export type ClipAudioPatch = Partial<Pick<Clip, 'volume' | 'audioFadeIn' | 'audioFadeOut' | 'audioMuted'>>;
+export type ClipAudioPatch = Partial<Pick<Clip, 'volume' | 'audioFadeIn' | 'audioFadeOut' | 'audioMuted' | 'audioFx' | 'flipH' | 'flipV'>>;
 
 export function setClipFields(project: Project, clipId: Id, patch: ClipAudioPatch): Project {
   const ref = findClip(project, clipId);

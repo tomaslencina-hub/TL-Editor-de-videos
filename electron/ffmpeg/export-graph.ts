@@ -1,4 +1,5 @@
 import { clipDuration, clipSpeed, projectDuration, type Clip, type MediaSource, type Project, type Track } from '../../shared/model';
+import { audioFxFilters } from '../../shared/audio-fx';
 import { ADJACENT_EPS, crossExtensions, resolveTransitions, type ResolvedTransition } from '../../shared/transitions';
 
 /**
@@ -92,6 +93,8 @@ export function buildAudioPlan(project: Project, inputOffset = 0): AudioPlan {
         `[${idx}:a:0]${aFormat}`,
         'asetpts=PTS-STARTPTS',
         ...atempoChain(sp),
+        // Limpieza/ecualizador/balance antes de rellenar con silencio.
+        ...audioFxFilters(clip.audioFx),
         delayMs > 0 ? `adelay=${delayMs}:all=1` : null,
         // apad + atrim garantizan la duración exacta aunque el audio fuente sea más corto.
         'apad',

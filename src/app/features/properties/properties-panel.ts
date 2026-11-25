@@ -12,6 +12,7 @@ import { formatTimecode } from '../../core/timeline/time';
 import { Icon } from '../../core/ui/icon';
 import { FONT_FAMILIES, TEXT_ANIMATION_LABELS, TEXT_ANIMATIONS, type TextContent } from '../../../../shared/text';
 import { OVERLAY_LABELS, type OverlayEffect } from '../../../../shared/effects';
+import { EQ_BANDS, EQ_LABELS, EQ_MAX_DB, EQ_PRESETS, isNeutralAudioFx, type AudioFx } from '../../../../shared/audio-fx';
 
 interface PropRow {
   prop: AnimatableProp;
@@ -105,6 +106,56 @@ export class PropertiesPanel {
     const clip = this.sel.clip();
     if (!clip || this.sel.track()?.locked) return;
     this.store.dispatch(Commands.setClipAudio(clip.id, patch), mergeKey ? { mergeKey: `${mergeKey}:${clip.id}` } : undefined);
+  }
+
+  // ---- espejado ----
+  protected flip(key: 'flipH' | 'flipV'): void {
+    const clip = this.sel.clip();
+    if (!clip || this.sel.track()?.locked) return;
+    this.store.dispatch(Commands.setFlip(clip.id, { [key]: !clip[key] || undefined }));
+  }
+
+  // ---- limpieza / ecualizador / balance ----
+  protected readonly eqLabels = EQ_LABELS;
+  protected readonly eqPresets = EQ_PRESETS;
+  protected readonly fx = computed<AudioFx>(() => this.sel.clip()?.audioFx ?? {});
+  protected readonly fxActive = computed(() => !isNeutralAudioFx(this.sel.clip()?.audioFx));
+  protected readonly eqPresetId = computed(() => {
+    const eq = this.fx().eq ?? [];
+    return EQ_PRESETS.find((p) => p.gains.every((g, i) => Math.abs(g - (eq[i] ?? 0)) < 0.01))?.id ?? '';
+  });
+  protected readonly panLabel = computed(() => {
+    const p = Math.round((this.fx().pan ?? 0) * 100);
+    return p === 0 ? 'C' : p < 0 ? `I${-p}` : `D${p}`;
+  });
+
+  protected eqGain(i: number): number {
+    return this.fx().eq?.[i] ?? 0;
+  }
+
+  /** `null` quita todo. Los campos neutros se borran para no ensuciar el proyecto. */
+  protected setFx(patch: Partial<AudioFx> | null, mergeKey?: string): void {
+    let next: AudioFx | undefined;
+    if (patch) {
+      const merged: AudioFx = { ...this.fx(), ...patch };
+      if (!merged.denoise) delete merged.denoise;
+      if (!merged.pan || Math.abs(merged.pan) < 0.01) delete merged.pan;
+      for (const k of ['dewind', 'dehum', 'dehiss'] as const) if (!merged[k]) delete merged[k];
+      if (!merged.eq?.some((g) => Math.abs(g) > 0.01)) delete merged.eq;
+      next = Object.keys(merged).length ? merged : undefined;
+    }
+    this.setAudio({ audioFx: next }, mergeKey);
+  }
+
+  protected setBand(i: number, gain: number): void {
+    const eq = [...(this.fx().eq ?? EQ_BANDS.map(() => 0))];
+    eq[i] = Math.max(-EQ_MAX_DB, Math.min(EQ_MAX_DB, gain));
+    this.setFx({ eq }, `fx-eq-${i}`);
+  }
+
+  protected eqPreset(id: string): void {
+    const p = EQ_PRESETS.find((x) => x.id === id);
+    if (p) this.setFx({ eq: [...p.gains] });
   }
 
   protected detachAudio(): void {

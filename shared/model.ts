@@ -10,6 +10,7 @@
  *    que sumar texto, transiciones, filtros y keyframes no requiera migrar el formato.
  */
 
+import type { AudioFx } from './audio-fx';
 import type { OverlayEffect } from './effects';
 import type { TextContent } from './text';
 import { isTransitionType, type TransitionType } from './transitions';
@@ -92,6 +93,9 @@ export interface Clip {
   overlay?: OverlayEffect;
   /** Posición/escala/rotación/opacidad (valores estáticos; los keyframes tienen prioridad). */
   transform?: Partial<ClipTransform>;
+  /** Espejado horizontal / vertical de la imagen. */
+  flipH?: boolean;
+  flipV?: boolean;
   /** Ajustes de color. */
   adjust?: Partial<ColorAdjust>;
   /**
@@ -105,6 +109,8 @@ export interface Clip {
   /** Fundido de audio al inicio / final del clip (s). */
   audioFadeIn?: number;
   audioFadeOut?: number;
+  /** Limpieza (ruido, viento, zumbido), ecualizador y balance del audio del clip. */
+  audioFx?: AudioFx;
   /** Silencia el audio propio del clip (p. ej. tras "Separar audio"). */
   audioMuted?: boolean;
   /**

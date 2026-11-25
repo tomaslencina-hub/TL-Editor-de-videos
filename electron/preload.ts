@@ -43,7 +43,7 @@ const api: TlApi = {
   onSubtitleProgress: (cb) => subscribe<SubtitleProgress>('subtitles:progress', cb),
   saveSrt: (segments, name) => invoke('subtitles:save-srt', segments, name),
 
-  importFilmora: () => invoke('import:filmora'),
+  importFilmora: (path?: string) => invoke('import:filmora', path),
   findMedia: (names) => invoke('media:find', names),
 
   loadSession: () => invoke('session:load'),

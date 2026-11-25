@@ -16,6 +16,9 @@ export interface LayerDraw {
    * width/height en píxeles del cuadro del proyecto.
    */
   fit?: 'contain' | 'none';
+  /** Espejado horizontal / vertical (en la orientación en que se ve). */
+  flipX?: boolean;
+  flipY?: boolean;
   transform: ClipTransform;
   adjust: ColorAdjust;
 }
@@ -272,8 +275,11 @@ export class Compositor {
         : swapped
           ? Math.min(W / layer.height, H / layer.width)
           : Math.min(W / layer.width, H / layer.height);
-    const dw = layer.width * fit * t.scale;
-    const dh = layer.height * fit * t.scale;
+    // Espejado: escala negativa en el eje de la textura (si el archivo viene rotado 90°, los ejes se cruzan).
+    const fx = (swapped ? layer.flipY : layer.flipX) ? -1 : 1;
+    const fy = (swapped ? layer.flipX : layer.flipY) ? -1 : 1;
+    const dw = layer.width * fit * t.scale * fx;
+    const dh = layer.height * fit * t.scale * fy;
     const cx = W / 2 + t.x * W;
     const cy = H / 2 + t.y * H;
     const rad = ((t.rotation + srcRot) * Math.PI) / 180;

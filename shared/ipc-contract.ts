@@ -76,7 +76,7 @@ export interface ImportResult {
   warnings: string[];
   /** Rutas originales de medios que no existen en esta computadora. */
   missing: string[];
-  stats: { clips: number; texts: number; media: number };
+  stats: { clips: number; texts: number; media: number; transitions: number; effects: number };
 }
 
 /** Estado de edición que se recupera al volver a abrir la app. */
@@ -159,8 +159,8 @@ export interface TlApi {
   /** Guarda un archivo .srt (abre el diálogo). Devuelve la ruta o null si se cancela. */
   saveSrt(segments: SubtitleSegment[], suggestedName: string): Promise<string | null>;
 
-  /** Abre el diálogo y convierte un proyecto de Filmora (.wfp). null si se cancela. */
-  importFilmora(): Promise<ImportResult | null>;
+  /** Convierte un proyecto de Filmora (.wfp): el de `path` (soltado en la ventana) o el que se elija en un diálogo. null si se cancela. */
+  importFilmora(path?: string): Promise<ImportResult | null>;
   /**
    * Pide una carpeta y busca ahí (y en subcarpetas) archivos con esos nombres.
    * Devuelve nombre en minúsculas → ruta encontrada, o null si se cancela.
