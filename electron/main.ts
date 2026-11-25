@@ -22,6 +22,23 @@ if (devUrl) app.commandLine.appendSwitch('disable-http-cache');
 if (process.platform === 'win32') app.setAppUserModelId('com.shoton.editor');
 app.setName('SHOTON');
 
+// `--profile=nombre`: carpeta de datos separada (sesión, caché, modelos). Sirve para probar sin tocar
+// la sesión real del usuario. Tiene que ir antes de cualquier uso de app.getPath('userData').
+const profile = process.argv.find((a) => a.startsWith('--profile='))?.slice('--profile='.length);
+if (profile) app.setPath('userData', path.join(app.getPath('appData'), `SHOTON-${profile.replace(/[^\w-]/g, '')}`));
+
+// Una sola instancia por carpeta de datos: dos ventanas escribiendo la misma sesión se pisarían.
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (!mainWindow) return;
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  });
+}
+
 registerMediaSchemePrivileges();
 
 function createWindow(): void {
@@ -79,6 +96,7 @@ function createWindow(): void {
 }
 
 void app.whenReady().then(() => {
+  if (!gotLock) return;
   const ffmpegError = checkFfmpegAvailable();
   if (ffmpegError) dialog.showErrorBox('FFmpeg no disponible', ffmpegError);
 
