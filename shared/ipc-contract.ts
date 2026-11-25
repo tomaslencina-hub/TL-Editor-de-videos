@@ -70,6 +70,13 @@ export interface SubtitleProgress {
   ratio: number;
 }
 
+/** Estado del asistente de IA (Gemini). */
+export interface AiStatus {
+  hasKey: boolean;
+  /** Modelo en uso (se elige al validar la clave); null si todavía no se consultó. */
+  model: string | null;
+}
+
 /** Resultado de importar un proyecto de Filmora. */
 export interface ImportResult {
   project: Project;
@@ -179,6 +186,15 @@ export interface TlApi {
   installUpdate(): Promise<void>;
   checkForUpdates(): Promise<void>;
   showItemInFolder(path: string): Promise<void>;
+
+  /** Abre en el navegador una página de ayuda permitida (p. ej. para sacar la clave de Gemini). */
+  openHelpUrl(url: string): Promise<void>;
+
+  aiStatus(): Promise<AiStatus>;
+  /** Valida y guarda (cifrada) la clave de Gemini; null la borra. */
+  aiSetKey(key: string | null): Promise<AiStatus>;
+  /** Un turno de generateContent de Gemini: recibe el cuerpo del pedido y devuelve la respuesta tal cual. */
+  aiGenerate(request: unknown): Promise<unknown>;
 }
 
 /** Nombres de canales IPC (usados como literales en preload y main). */
@@ -212,4 +228,8 @@ export type IpcChannel =
   | 'update:status'
   | 'update:get-status'
   | 'update:install'
-  | 'update:check';
+  | 'update:check'
+  | 'shell:open-help'
+  | 'ai:status'
+  | 'ai:set-key'
+  | 'ai:generate';

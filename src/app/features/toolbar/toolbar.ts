@@ -2,6 +2,7 @@ import { Component, computed, inject } from '@angular/core';
 import { Commands } from '../../core/commands/command';
 import { EditorActionsService } from '../../core/editor-actions.service';
 import { ExportService } from '../../core/export/export.service';
+import { LibraryTabService } from '../../core/ui/library-tab.service';
 import { ProjectStore } from '../../core/state/project-store';
 import { UpdateService } from '../../core/update/update.service';
 import { Icon } from '../../core/ui/icon';
@@ -32,6 +33,7 @@ export class Toolbar {
   protected readonly store = inject(ProjectStore);
   protected readonly actions = inject(EditorActionsService);
   protected readonly exporter = inject(ExportService);
+  protected readonly libraryTab = inject(LibraryTabService);
   protected readonly updates = inject(UpdateService);
 
   protected readonly fpsOptions = FPS_OPTIONS;

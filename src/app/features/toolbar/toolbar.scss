@@ -48,3 +48,13 @@
   border-color: transparent;
   font-size: 12px;
 }
+
+.ai-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  &.active {
+    border-color: var(--accent);
+    color: var(--text-0);
+  }
+}

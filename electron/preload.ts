@@ -44,6 +44,10 @@ const api: TlApi = {
   saveSrt: (segments, name) => invoke('subtitles:save-srt', segments, name),
 
   importFilmora: (path?: string) => invoke('import:filmora', path),
+  openHelpUrl: (url) => invoke('shell:open-help', url),
+  aiStatus: () => invoke('ai:status'),
+  aiSetKey: (key) => invoke('ai:set-key', key),
+  aiGenerate: (request) => invoke('ai:generate', request),
   findMedia: (names) => invoke('media:find', names),
 
   loadSession: () => invoke('session:load'),

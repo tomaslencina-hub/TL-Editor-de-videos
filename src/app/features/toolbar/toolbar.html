@@ -76,4 +76,6 @@
   </select>
 </label>
 
+<button class="ai-btn" [class.active]="libraryTab.tab() === 'assistant'" (click)="libraryTab.tab.set('assistant')" title="Asistente con IA: pedile cambios al proyecto con tus palabras"><app-icon name="bot" [size]="15" /> Asistente IA</button>
+
 <button class="primary" (click)="exporter.show()" title="Exportar (Ctrl+E)"><app-icon name="upload" [size]="15" /> Exportar</button>

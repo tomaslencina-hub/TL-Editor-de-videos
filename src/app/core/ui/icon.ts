@@ -48,6 +48,8 @@ import {
   Volume2,
   VolumeX,
   Blend,
+  Bot,
+  SendHorizontal,
   X,
   type IconNode,
 } from 'lucide';
@@ -97,6 +99,8 @@ const ICONS = {
   'skip-forward': SkipForward,
   sliders: SlidersHorizontal,
   sparkles: Sparkles,
+  bot: Bot,
+  send: SendHorizontal,
   'step-back': StepBack,
   'step-forward': StepForward,
   trash: Trash2,

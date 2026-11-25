@@ -76,7 +76,11 @@ Flujo: trabajar en `dev` → `git checkout test && git merge dev && git push` �
 10. **Audio**: en *Propiedades* → *Limpieza y ecualizador*: reducción de ruido (se aplica al exportar), quitar viento,
     zumbido y siseo, balance izquierda/derecha y ecualizador de 10 bandas con estilos prearmados.
     En *Transformación*, los botones de espejado dan vuelta la imagen horizontal o verticalmente.
-11. **Atajos**: `Espacio` play/pausa, `←`/`→` cuadro a cuadro, `Ctrl+Z`/`Ctrl+Y`, `Ctrl+S` guardar, `Ctrl+E` exportar.
+11. **Asistente IA** (botón *Asistente IA* arriba): un chat con Gemini que edita el proyecto con tus palabras
+    ("poné fundidos entre todos los clips", "look de cine a todo", "título al principio", "bajá la música"…).
+    Necesita una clave gratuita de Google AI Studio (se guarda cifrada en la PC). Se le manda la estructura del proyecto
+    y el pedido, nunca los videos. Todo lo que hace en un pedido se deshace junto (botón o Ctrl+Z).
+12. **Atajos**: `Espacio` play/pausa, `←`/`→` cuadro a cuadro, `Ctrl+Z`/`Ctrl+Y`, `Ctrl+S` guardar, `Ctrl+E` exportar.
 
 **Importar de Filmora** (botón de claqueta, *Archivo → Importar proyecto de Filmora* o soltando el `.wfp` en la
 ventana): convierte el proyecto (probado con Filmora 14) con sus pistas, clips, recortes, velocidad, volumen, fundidos,

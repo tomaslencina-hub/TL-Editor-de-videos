@@ -122,8 +122,12 @@ export class ProjectStore {
     this.pruneSelection();
   }
 
+  /** Aumenta cada vez que se reemplaza el proyecto completo (nuevo, abrir, recuperar sesión). */
+  readonly loadCount = signal(0);
+
   /** Reemplaza el proyecto completo (nuevo / abrir): limpia el historial. */
   load(project: Project, filePath: string | null): void {
+    this.loadCount.update((n) => n + 1);
     this._project.set(project);
     this._savedProject.set(project);
     this._undo.set([]);

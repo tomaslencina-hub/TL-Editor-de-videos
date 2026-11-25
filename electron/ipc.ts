@@ -7,6 +7,7 @@ import { ExportManager } from './ffmpeg/export';
 import { makeIntermediate } from './ffmpeg/intermediate';
 import { SubtitleTranscriber, toSrt } from './ffmpeg/transcribe';
 import { findFilesByName, importFilmora } from './import/filmora';
+import { aiGenerate, aiSetKey, aiStatus } from './ai/gemini';
 import { probe } from './ffmpeg/probe';
 import { thumbnail } from './ffmpeg/thumbnail';
 import { waveform } from './ffmpeg/waveform';
@@ -124,6 +125,15 @@ export function registerIpc(getWindow: () => BrowserWindow | null): void {
     if (res.canceled || !res.filePaths.length) return null;
     return importFilmora(res.filePaths[0]);
   });
+
+  // Solo páginas de ayuda conocidas: nada de abrir URLs arbitrarias desde el renderer.
+  ipcMain.handle('shell:open-help', (_e, url: unknown) => {
+    if (typeof url === 'string' && /^https:\/\/(aistudio\.google\.com|ai\.google\.dev)\//.test(url)) return shell.openExternal(url);
+    return undefined;
+  });
+  ipcMain.handle('ai:status', () => aiStatus());
+  ipcMain.handle('ai:set-key', (_e, key: unknown) => aiSetKey(typeof key === 'string' ? key : null));
+  ipcMain.handle('ai:generate', (_e, request: unknown) => aiGenerate(request));
 
   ipcMain.handle('media:find', async (_e, names: string[]) => {
     const win = getWindow();

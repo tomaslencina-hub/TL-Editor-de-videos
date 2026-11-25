@@ -1,4 +1,4 @@
-import { Component, effect, inject, signal, untracked } from '@angular/core';
+import { Component, effect, inject, untracked } from '@angular/core';
 import { ProjectStore } from '../../core/state/project-store';
 import { Icon } from '../../core/ui/icon';
 import { MediaPanel } from '../media-panel/media-panel';
@@ -6,13 +6,14 @@ import { PropertiesPanel } from '../properties/properties-panel';
 import { TextPanel } from '../text-panel/text-panel';
 import { EffectsPanel } from '../effects-panel/effects-panel';
 import { TransitionsPanel } from '../transitions-panel/transitions-panel';
+import { AssistantPanel } from '../assistant-panel/assistant-panel';
 
-type Tab = 'media' | 'text' | 'effects' | 'transitions' | 'props';
+import { LibraryTabService } from '../../core/ui/library-tab.service';
 
 /** Panel izquierdo con pestañas: medios importados, transiciones y propiedades del clip seleccionado. */
 @Component({
   selector: 'app-library',
-  imports: [Icon, MediaPanel, TextPanel, EffectsPanel, TransitionsPanel, PropertiesPanel],
+  imports: [Icon, MediaPanel, TextPanel, EffectsPanel, TransitionsPanel, PropertiesPanel, AssistantPanel],
   template: `
     <nav class="tabs" role="tablist">
       <button role="tab" [class.active]="tab() === 'media'" (click)="tab.set('media')"><app-icon name="images" [size]="15" /> Medios</button>
@@ -20,6 +21,7 @@ type Tab = 'media' | 'text' | 'effects' | 'transitions' | 'props';
       <button role="tab" [class.active]="tab() === 'effects'" (click)="tab.set('effects')"><app-icon name="sparkles" [size]="15" /> Efectos</button>
       <button role="tab" [class.active]="tab() === 'transitions'" (click)="tab.set('transitions')"><app-icon name="transition" [size]="15" /> Transiciones</button>
       <button role="tab" [class.active]="tab() === 'props'" (click)="tab.set('props')"><app-icon name="sliders" [size]="15" /> Propiedades</button>
+      <button role="tab" [class.active]="tab() === 'assistant'" (click)="tab.set('assistant')"><app-icon name="bot" [size]="15" /> Asistente</button>
     </nav>
     @switch (tab()) {
       @case ('media') {
@@ -36,6 +38,9 @@ type Tab = 'media' | 'text' | 'effects' | 'transitions' | 'props';
       }
       @case ('props') {
         <app-properties-panel class="content" />
+      }
+      @case ('assistant') {
+        <app-assistant-panel class="content" />
       }
     }
   `,
@@ -75,13 +80,14 @@ type Tab = 'media' | 'text' | 'effects' | 'transitions' | 'props';
   `,
 })
 export class Library {
-  protected readonly tab = signal<Tab>('media');
+  protected readonly tab = inject(LibraryTabService).tab;
 
   constructor() {
     const store = inject(ProjectStore);
     // Al seleccionar un clip se muestran sus propiedades (como en los editores modernos).
     effect(() => {
-      if (store.selectedClipId()) untracked(() => this.tab.set('props'));
+      // (no mientras se usa el asistente: el chat no se tiene que cerrar)
+      if (store.selectedClipId()) untracked(() => this.tab() !== 'assistant' && this.tab.set('props'));
     });
   }
 }
