@@ -54,13 +54,18 @@ Flujo: trabajar en `dev` → `git checkout test && git merge dev && git push` �
      silenciar, *Separar audio*).
 4. **Texto**: pestaña *Texto* → elegí un estilo; se agrega en el playhead. Editalo en *Propiedades*
    (fuente, tamaño, color, contorno, sombra, fondo, animaciones de entrada/salida).
-5. **Transiciones**: pestaña *Transiciones* (18 tipos) → arrastrá al borde de un clip. Clic en la marca ✦ para editarla.
+5. **Transiciones**: pestaña *Transiciones* (41 tipos: fundidos, barridos, deslizar, zoom, giro, remolino, onda, glitch,
+   corazón, iris, puertas, persianas, mosaico, barrido rápido…) → arrastrá al borde de un clip. Clic en la marca ✦ para editarla.
 6. **Imágenes y stickers** (png, jpg, webp, bmp, gif): se importan igual que los videos; entran con 5 s y se estiran
    sin límite. La transparencia de los PNG se respeta.
-7. **Efectos** (pestaña *Efectos*): corazones, fuegos artificiales, confeti, nieve, brillos y burbujas. Se agregan en
+7. **Efectos** (pestaña *Efectos*): corazones, fuegos artificiales, confeti, nieve, brillos, burbujas, lluvia, cielo
+   estrellado, luces bokeh, pétalos, hojas de otoño, globos, notas musicales, destello de luz y luces de escenario. Se agregan en
    el playhead sobre el video (en su propia pista si hace falta). En *Propiedades*: intensidad, tamaño, velocidad, color,
    multicolor y *Variar* (otra distribución). También admiten transformación, keyframes y transiciones.
    Se dibujan a partir del tiempo con aleatorios fijos: vista previa y exportación salen idénticas.
+   **Filtros** (misma pestaña, 27: blanco y negro, sepia, vintage, cine, noir, terror, VHS, película vieja, glitch,
+   desenfoque, boceto, ojo de pez…): con un clip seleccionado se aplica a ese clip; sin selección se agrega una
+   *capa de filtro* que afecta a todo lo que está debajo mientras dure. Tipo e intensidad se cambian en *Propiedades → Filtro*.
 8. **Subtítulos automáticos** (botón *💬 Subtítulos* en la timeline): transcribe lo que se escucha (toda la timeline o
    el clip seleccionado) con Whisper, sin internet, y crea una pista "Subtítulos" con un texto por frase en el estilo
    elegido (clásico, con fondo o redes). La primera vez baja el modelo (base 148 MB, small 488 MB, large-v3-turbo 1,6 GB)
@@ -77,8 +82,8 @@ Flujo: trabajar en `dev` → `git checkout test && git merge dev && git push` �
 ventana): convierte el proyecto (probado con Filmora 14) con sus pistas, clips, recortes, velocidad, volumen, fundidos,
 posición/escala, espejado, transiciones de video y de audio, limpieza de audio (ruido, viento, zumbido, siseo),
 ecualizador, balance y los títulos con su animación de entrada. Las transiciones y efectos de los packs de Filmora se
-reemplazan por el equivalente más parecido de SHOTON; lo que no tiene equivalente (máscaras, filtros de color,
-overlays de la biblioteca) se lista en el resumen.
+reemplazan por el equivalente más parecido de SHOTON (los filtros de la biblioteca pasan a capas de filtro); lo que no
+tiene equivalente (máscaras, filtros de color por clip, algunos overlays) se lista en el resumen.
 Si los archivos están en otra ruta (otra PC), *Buscar archivos…* pide una carpeta y los vincula por nombre;
 el aviso "Faltan N archivos" del panel de medios hace lo mismo para cualquier proyecto.
 

@@ -46,6 +46,7 @@ import {
 import { AutofocusDirective } from '../../core/ui/autofocus.directive';
 import { Icon } from '../../core/ui/icon';
 import { OVERLAY_LABELS } from '../../../../shared/effects';
+import { FILTER_LABELS, isFilterClip } from '../../../../shared/filters';
 import { keyframeTimes } from '../../core/timeline/clip-props';
 import { SubtitlesService } from '../../core/subtitles/subtitles.service';
 import { MEDIA_DRAG_TYPE, MediaDragService, TRANSITION_DRAG_TYPE } from '../../core/ui/media-drag.service';
@@ -211,8 +212,11 @@ export class Timeline implements AfterViewInit, OnDestroy {
     return Math.max(2, clipDuration(clip) * this.view.pps());
   }
 
+  protected readonly isFilterClip = isFilterClip;
+
   protected clipName(clip: Clip): string {
     if (clip.overlay) return `✦ ${OVERLAY_LABELS[clip.overlay.type]}`;
+    if (isFilterClip(clip)) return `◐ Filtro: ${FILTER_LABELS[clip.filter!.type]}`;
     if (clip.text) return `T  ${clip.text.text.split('\n')[0] || 'Texto'}`;
     const name = this.mediaById().get(clip.sourceId)?.name ?? '¿medio desconocido?';
     const sp = clipSpeed(clip);

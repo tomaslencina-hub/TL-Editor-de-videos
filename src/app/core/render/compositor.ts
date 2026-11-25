@@ -1,6 +1,13 @@
+import type { FilterType } from '../../../../shared/filters';
 import type { ColorAdjust, ClipTransform } from '../../../../shared/model';
 import type { TransitionType } from '../../../../shared/transitions';
-import { FULLSCREEN_VS, LAYER_FS, LAYER_VS, TRANSITION_FS, transitionIndex } from './shaders';
+import { BLIT_FS, filterIndex, FULLSCREEN_VS, LAYER_FS, LAYER_VS, TRANSITION_FS, transitionIndex } from './shaders';
+
+/**
+ * Textura especial: lo ya dibujado debajo de la pista actual (para las capas de filtro).
+ * Se lee "boca abajo" (es un framebuffer), así que la capa tiene que ir con flipY.
+ */
+export const BELOW_TEXTURE = '__below__';
 
 /** Fuente de una capa ya subida a una textura del compositor. */
 export interface LayerDraw {
@@ -13,14 +20,16 @@ export interface LayerDraw {
   sourceRotation?: number;
   /**
    * 'contain' (video/imagen): se encaja en el cuadro. 'none' (texto): tamaño natural, con
-   * width/height en píxeles del cuadro del proyecto.
+   * width/height en píxeles del cuadro del proyecto. 'frame' (capa de filtro): ocupa el cuadro exacto.
    */
-  fit?: 'contain' | 'none';
+  fit?: 'contain' | 'none' | 'frame';
   /** Espejado horizontal / vertical (en la orientación en que se ve). */
   flipX?: boolean;
   flipY?: boolean;
   transform: ClipTransform;
   adjust: ColorAdjust;
+  /** Filtro de imagen; `time` = segundos desde el inicio del clip (para los animados). */
+  filter?: { type: FilterType; amount: number; time: number };
 }
 
 /** Lo que se dibuja de una pista en un cuadro: una capa, o dos con una transición. */
@@ -70,9 +79,13 @@ export class Compositor {
   private unit = 1;
   private readonly layerProg: WebGLProgram;
   private readonly transProg: WebGLProgram;
+  private readonly blitProg: WebGLProgram;
   private readonly quad: WebGLVertexArrayObject;
   private readonly textures = new Map<string, { tex: WebGLTexture; w: number; h: number }>();
   private targets: [Target, Target] | null = null;
+  /** Acumulador del cuadro y copia de "lo de abajo": solo se usan si hay capas de filtro. */
+  private accum: Target | null = null;
+  private below: Target | null = null;
   private readonly uniforms = new Map<WebGLProgram, Map<string, WebGLUniformLocation | null>>();
 
   constructor(readonly canvas: HTMLCanvasElement | OffscreenCanvas) {
@@ -86,6 +99,7 @@ export class Compositor {
     this.gl = gl;
     this.layerProg = program(gl, LAYER_VS, LAYER_FS);
     this.transProg = program(gl, FULLSCREEN_VS, TRANSITION_FS);
+    this.blitProg = program(gl, FULLSCREEN_VS, BLIT_FS);
 
     this.quad = gl.createVertexArray()!;
     gl.bindVertexArray(this.quad);
@@ -115,6 +129,8 @@ export class Compositor {
       return { fbo, tex };
     };
     this.targets = [make(), make()];
+    this.accum = make();
+    this.below = make();
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
 
@@ -149,19 +165,25 @@ export class Compositor {
   render(background: string, tracks: TrackDraw[]): void {
     const gl = this.gl;
     const [r, g, b] = parseColor(background);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    const readsBelow = (t: TrackDraw) => [t.main, t.from, t.to].some((l) => l?.texture === BELOW_TEXTURE);
+    // Con capas de filtro se compone en un framebuffer propio (del canvas no se puede leer de forma fiable)
+    // y al final se copia al canvas.
+    const out = tracks.some(readsBelow) ? this.accum : null;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, out?.fbo ?? null);
     gl.viewport(0, 0, this.width, this.height);
     gl.disable(gl.BLEND);
     gl.clearColor(r, g, b, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
     for (const track of tracks) {
+      if (out && readsBelow(track)) this.snapshotBelow(out);
       if (track.transition && (track.from || track.to)) {
-        this.drawTransition(track);
+        this.drawTransition(track, out);
       } else if (track.main) {
-        this.drawLayer(track.main, null);
+        this.drawLayer(track.main, out);
       }
     }
+    if (out) this.blit(out.tex, null);
     gl.bindVertexArray(this.quad);
   }
 
@@ -190,6 +212,37 @@ export class Compositor {
       this.gl.deleteTexture(t.tex);
     }
     this.targets = null;
+    for (const t of [this.accum, this.below]) {
+      if (!t) continue;
+      this.gl.deleteFramebuffer(t.fbo);
+      this.gl.deleteTexture(t.tex);
+    }
+    this.accum = this.below = null;
+  }
+
+  /** Copia lo compuesto hasta ahora a la textura BELOW_TEXTURE. */
+  private snapshotBelow(from: Target): void {
+    const gl = this.gl;
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, from.fbo);
+    gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, this.below!.fbo);
+    gl.blitFramebuffer(0, 0, this.width, this.height, 0, 0, this.width, this.height, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
+    gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
+  }
+
+  /** Copia una textura del tamaño del cuadro al destino, sin mezcla. */
+  private blit(tex: WebGLTexture, target: Target | null): void {
+    const gl = this.gl;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, target?.fbo ?? null);
+    gl.viewport(0, 0, this.width, this.height);
+    gl.disable(gl.BLEND);
+    gl.useProgram(this.blitProg);
+    gl.bindVertexArray(this.quad);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.uniform1i(this.uniform(this.blitProg, 'u_tex'), 0);
+    gl.uniform2f(this.uniform(this.blitProg, 'u_res'), this.width, this.height);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
 
   private uniform(prog: WebGLProgram, name: string): WebGLUniformLocation | null {
@@ -202,7 +255,10 @@ export class Compositor {
   /** Dibuja una capa en el destino (null = canvas) con mezcla premultiplicada. */
   private drawLayer(layer: LayerDraw, target: Target | null): void {
     const gl = this.gl;
-    const entry = this.textures.get(layer.texture);
+    const entry =
+      layer.texture === BELOW_TEXTURE
+        ? this.below && { tex: this.below.tex, w: this.width, h: this.height }
+        : this.textures.get(layer.texture);
     if (!entry) return;
     gl.bindFramebuffer(gl.FRAMEBUFFER, target?.fbo ?? null);
     gl.viewport(0, 0, this.width, this.height);
@@ -221,10 +277,15 @@ export class Compositor {
     gl.uniform1f(this.uniform(p, 'u_contrast'), a.contrast);
     gl.uniform1f(this.uniform(p, 'u_saturation'), a.saturation);
     gl.uniform1f(this.uniform(p, 'u_temperature'), a.temperature);
+    const f = layer.filter;
+    gl.uniform1i(this.uniform(p, 'u_filter'), f ? filterIndex(f.type) : -1);
+    gl.uniform1f(this.uniform(p, 'u_amount'), f ? Math.min(1, Math.max(0, f.amount)) : 0);
+    gl.uniform1f(this.uniform(p, 'u_time'), f ? f.time : 0);
+    gl.uniform2f(this.uniform(p, 'u_texSize'), entry.w, entry.h);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
 
-  private drawTransition(track: TrackDraw): void {
+  private drawTransition(track: TrackDraw, out: Target | null): void {
     const gl = this.gl;
     const [ta, tb] = this.targets!;
     for (const [layer, target] of [
@@ -238,7 +299,7 @@ export class Compositor {
       if (layer) this.drawLayer(layer, target);
     }
 
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, out?.fbo ?? null);
     gl.viewport(0, 0, this.width, this.height);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
@@ -278,8 +339,8 @@ export class Compositor {
     // Espejado: escala negativa en el eje de la textura (si el archivo viene rotado 90°, los ejes se cruzan).
     const fx = (swapped ? layer.flipY : layer.flipX) ? -1 : 1;
     const fy = (swapped ? layer.flipX : layer.flipY) ? -1 : 1;
-    const dw = layer.width * fit * t.scale * fx;
-    const dh = layer.height * fit * t.scale * fy;
+    const dw = (layer.fit === 'frame' ? W : layer.width * fit) * t.scale * fx;
+    const dh = (layer.fit === 'frame' ? H : layer.height * fit) * t.scale * fy;
     const cx = W / 2 + t.x * W;
     const cy = H / 2 + t.y * H;
     const rad = ((t.rotation + srcRot) * Math.PI) / 180;

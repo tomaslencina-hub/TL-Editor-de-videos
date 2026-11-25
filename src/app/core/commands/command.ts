@@ -1,5 +1,6 @@
 import type { AnimatableProp, Clip, Id, MediaSource, Project, ProjectSettings, Track, TrackKind, Transition } from '../../../../shared/model';
 import type { OverlayEffect } from '../../../../shared/effects';
+import type { ClipFilter } from '../../../../shared/filters';
 import type { SubtitleStyle, TextContent } from '../../../../shared/text';
 import * as props from '../timeline/clip-props';
 import * as ops from '../timeline/timeline-ops';
@@ -86,6 +87,15 @@ export const Commands = {
       onCreated?.(res.clip);
       return res.project;
     }),
+
+  addFilter: (filter: ClipFilter, start: number, onCreated?: (clip: Clip) => void) =>
+    cmd('Agregar filtro', (p) => {
+      const res = ops.addFilterClip(p, filter, start);
+      onCreated?.(res.clip);
+      return res.project;
+    }),
+
+  setFilter: (clipId: Id, filter: ClipFilter | null) => cmd('Filtro', (p) => ops.setClipFilter(p, clipId, filter)),
 
   updateOverlay: (clipId: Id, patch: Partial<OverlayEffect>) =>
     cmd('Editar efecto', (p) => ops.setClipOverlay(p, clipId, patch)),

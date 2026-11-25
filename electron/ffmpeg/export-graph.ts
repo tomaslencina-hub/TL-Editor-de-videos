@@ -1,4 +1,4 @@
-import { clipDuration, clipSpeed, projectDuration, type Clip, type MediaSource, type Project, type Track } from '../../shared/model';
+import { clipDuration, clipSpeed, isGeneratedClip, projectDuration, type Clip, type MediaSource, type Project, type Track } from '../../shared/model';
 import { audioFxFilters } from '../../shared/audio-fx';
 import { ADJACENT_EPS, crossExtensions, resolveTransitions, type ResolvedTransition } from '../../shared/transitions';
 
@@ -73,7 +73,7 @@ export function buildAudioPlan(project: Project, inputOffset = 0): AudioPlan {
 
   const audioClip = (clip: Clip, transitions: ResolvedTransition[]): { l: string; len: number } => {
     const media = mediaById.get(clip.sourceId);
-    if (!media && !clip.text && !clip.overlay) throw new Error(`El clip ${clip.id} referencia un medio inexistente (${clip.sourceId}).`);
+    if (!media && !isGeneratedClip(clip)) throw new Error(`El clip ${clip.id} referencia un medio inexistente (${clip.sourceId}).`);
     const ext = extensions.get(clip.id) ?? { head: 0, tail: 0 };
     const len = ext.head + clipDuration(clip) + ext.tail;
     let l: string;

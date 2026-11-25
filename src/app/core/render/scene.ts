@@ -1,9 +1,10 @@
 import { visualParams } from '../../../../shared/animation';
-import { clipDuration, type Clip, type Project, type Track } from '../../../../shared/model';
+import { isFilterClip } from '../../../../shared/filters';
+import { clipDuration, DEFAULT_TRANSFORM, type Clip, type Project, type Track } from '../../../../shared/model';
 import { textAnimation } from '../../../../shared/text';
 import { resolveTransitions, type ResolvedTransition } from '../../../../shared/transitions';
 import { composeTrack, type Layer } from '../playback/compose';
-import type { LayerDraw, TrackDraw } from './compositor';
+import { BELOW_TEXTURE, type LayerDraw, type TrackDraw } from './compositor';
 
 /** Pistas que se dibujan (las de audio no). */
 export function visualTracks(project: Project): Track[] {
@@ -43,7 +44,8 @@ export interface ResolvedSource {
   width: number;
   height: number;
   sourceRotation?: number;
-  fit?: 'contain' | 'none';
+  fit?: 'contain' | 'none' | 'frame';
+  flipY?: boolean;
 }
 
 /**
@@ -58,9 +60,26 @@ export function toTrackDraws(
   const draws: TrackDraw[] = [];
   for (const p of plan) {
     const make = (layer: Layer): LayerDraw | undefined => {
+      const clip = layer.clip;
+      const local = clipTime(clip, t);
+      const filter = clip.filter && { type: clip.filter.type, amount: clip.filter.amount, time: local };
+      if (isFilterClip(clip)) {
+        // Capa de filtro: toma lo ya dibujado debajo y lo devuelve filtrado (la opacidad hace de mezcla).
+        const { transform, adjust } = visualParams(clip, local);
+        return {
+          texture: BELOW_TEXTURE,
+          width: 1,
+          height: 1,
+          fit: 'frame',
+          flipY: true,
+          transform: { ...DEFAULT_TRANSFORM, opacity: transform.opacity },
+          adjust,
+          filter,
+        };
+      }
       const src = resolve(p.track, layer);
       if (!src) return undefined;
-      const { transform, adjust } = visualParams(layer.clip, clipTime(layer.clip, t));
+      const { transform, adjust } = visualParams(clip, local);
       if (layer.clip.text) {
         // Animaciones de entrada/salida del texto (se suman a la transformación del clip).
         const anim = textAnimation(layer.clip.text, clipTime(layer.clip, t), clipDuration(layer.clip));
@@ -69,7 +88,7 @@ export function toTrackDraws(
         transform.scale *= anim.scale;
         transform.rotation += anim.rotation;
       }
-      return { ...src, transform, adjust, flipX: !!layer.clip.flipH, flipY: !!layer.clip.flipV };
+      return { ...src, transform, adjust, filter, flipX: !!clip.flipH, flipY: !!clip.flipV !== !!src.flipY };
     };
     if (p.transition) {
       const from = p.layers.find((l) => l.role === 'from');

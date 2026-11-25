@@ -12,6 +12,7 @@
 
 import type { AudioFx } from './audio-fx';
 import type { OverlayEffect } from './effects';
+import type { ClipFilter } from './filters';
 import type { TextContent } from './text';
 import { isTransitionType, type TransitionType } from './transitions';
 
@@ -98,6 +99,11 @@ export interface Clip {
   flipV?: boolean;
   /** Ajustes de color. */
   adjust?: Partial<ColorAdjust>;
+  /**
+   * Filtro de imagen (blanco y negro, VHS, desenfoque…). En un clip sin archivo, texto ni efecto,
+   * el clip es una capa de filtro que afecta a todo lo que está debajo (ver shared/filters.ts).
+   */
+  filter?: ClipFilter;
   /**
    * Keyframes por propiedad animable (ver ANIMATABLE_PROPS en shared/animation.ts).
    * `time` es relativo al inicio del clip en la timeline.
@@ -284,7 +290,7 @@ export function nextTrackName(project: Project, kind: TrackKind): string {
   return `${base} ${n}`;
 }
 
-/** Clip generado por la app (texto o efecto), sin archivo fuente. */
+/** Clip generado por la app (texto, efecto o capa de filtro), sin archivo fuente. */
 export function isGeneratedClip(clip: Clip): boolean {
-  return !!clip.text || !!clip.overlay;
+  return !!clip.text || !!clip.overlay || (!!clip.filter && !clip.sourceId);
 }

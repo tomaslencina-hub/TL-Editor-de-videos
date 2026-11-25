@@ -1,6 +1,6 @@
 import { computed, inject, Injectable } from '@angular/core';
 import { visualParams } from '../../../../shared/animation';
-import { clipDuration, type AnimatableProp } from '../../../../shared/model';
+import { clipDuration, isGeneratedClip, type AnimatableProp } from '../../../../shared/model';
 import { Commands } from '../commands/command';
 import { PlaybackService } from '../playback/playback.service';
 import { findClip, findMedia } from '../timeline/timeline-ops';
@@ -23,7 +23,7 @@ export class SelectedClipService {
     return clip ? (findMedia(this.store.project(), clip.sourceId) ?? null) : null;
   });
   readonly isVisual = computed(
-    () => !!this.track() && this.track()!.kind !== 'audio' && (!!this.clip()?.text || !!this.clip()?.overlay || !!this.media()?.hasVideo),
+    () => !!this.track() && this.track()!.kind !== 'audio' && ((!!this.clip() && isGeneratedClip(this.clip()!)) || !!this.media()?.hasVideo),
   );
 
   /** Tiempo del playhead relativo al inicio del clip, limitado a su duración. */

@@ -2,6 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import type { MenuAction } from '../../../shared/ipc-contract';
 import { createEmptyProject } from '../../../shared/model';
 import { makeOverlay, type OverlayType } from '../../../shared/effects';
+import { FILTER_LABELS, isFilterClip, makeFilter, type FilterType } from '../../../shared/filters';
 import { makeText, type TextPreset } from '../../../shared/text';
 import { Commands } from './commands/command';
 import { ExportService } from './export/export.service';
@@ -180,6 +181,33 @@ export class EditorActionsService {
   addOverlay(type: OverlayType, start = this.playback.currentTime()): void {
     let created: string | null = null;
     this.store.dispatch(Commands.addOverlay(makeOverlay(type), start, (c) => (created = c.id)));
+    if (created) this.store.selectClip(created);
+  }
+
+  /**
+   * Filtro desde la pestaña Efectos: si hay un clip con imagen seleccionado se le aplica a ese clip;
+   * si está seleccionada una capa de filtro, se cambia su tipo; si no, se agrega una capa de filtro
+   * en el playhead (afecta a todo lo que está debajo).
+   */
+  applyFilter(type: FilterType): void {
+    const project = this.store.project();
+    const id = this.store.selectedClipIds().length === 1 ? this.store.selectedClipId() : null;
+    const ref = id ? findClip(project, id) : null;
+    if (ref && ref.track.kind !== 'audio' && !ref.track.locked) {
+      const clip = ref.clip;
+      if (isFilterClip(clip)) {
+        this.store.dispatch(Commands.setFilter(clip.id, { type, amount: clip.filter!.amount }));
+        return;
+      }
+      const media = project.media.find((m) => m.id === clip.sourceId);
+      if (clip.text || clip.overlay || media?.hasVideo || media?.kind === 'image') {
+        this.store.dispatch(Commands.setFilter(clip.id, makeFilter(type)));
+        this.notify.show(`Filtro "${FILTER_LABELS[type]}" aplicado al clip seleccionado`, 'info', 2000);
+        return;
+      }
+    }
+    let created: string | null = null;
+    this.store.dispatch(Commands.addFilter(makeFilter(type), this.playback.currentTime(), (c) => (created = c.id)));
     if (created) this.store.selectClip(created);
   }
 

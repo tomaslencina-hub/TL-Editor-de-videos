@@ -249,6 +249,289 @@ function bubbles(d: DrawContext): void {
   ctx.globalAlpha = 1;
 }
 
+function withAlpha(hex: string, a: number): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return `rgba(255,255,255,${a})`;
+  const n = parseInt(m[1], 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+}
+
+/** Color de una paleta propia del efecto (si es multicolor) o el principal. */
+function pick(d: DrawContext, i: number, palette: string[]): string {
+  return d.fx.multicolor ? palette[Math.floor(rnd(d.fx.seed, i, 98) * palette.length)] : d.fx.color;
+}
+
+function rain(d: DrawContext): void {
+  const { ctx, W, H, u, t, fx } = d;
+  const n = Math.round(220 * fx.intensity);
+  const span = H * 1.3;
+  ctx.strokeStyle = fx.color;
+  ctx.lineCap = 'round';
+  for (let i = 0; i < n; i++) {
+    const depth = rnd(fx.seed, i, 1);
+    const fall = (900 + depth * 900) * u * fx.speed;
+    const len = (25 + depth * 45) * u * fx.size;
+    const y = mod(t * fall + rnd(fx.seed, i, 2) * span, span) - H * 0.15;
+    const x = mod(rnd(fx.seed, i, 3) * W * 1.2 - y * 0.15, W * 1.2) - W * 0.1;
+    ctx.globalAlpha = 0.2 + depth * 0.45;
+    ctx.lineWidth = (1 + depth * 1.5) * u;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + len * 0.15, y - len);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function stars(d: DrawContext): void {
+  const { ctx, W, H, u, t, fx } = d;
+  const n = Math.round(160 * fx.intensity);
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.fillStyle = fx.color;
+  for (let i = 0; i < n; i++) {
+    const x = rnd(fx.seed, i, 1) * W;
+    const y = rnd(fx.seed, i, 2) * H;
+    const r = (0.8 + Math.pow(rnd(fx.seed, i, 3), 3) * 2.8) * u * fx.size;
+    const tw = 0.5 + 0.5 * Math.sin(t * (1 + rnd(fx.seed, i, 4) * 3) * fx.speed + rnd(fx.seed, i, 5) * 6.28);
+    ctx.globalAlpha = 0.25 + 0.75 * tw;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+    if (r > 2 * u) {
+      ctx.globalAlpha = 0.25 * tw;
+      ctx.beginPath();
+      ctx.arc(x, y, r * 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  // Estrella fugaz de vez en cuando.
+  const period = 3 / fx.speed;
+  const k = Math.floor(t / period);
+  const ph = (t - k * period) / (0.9 / fx.speed);
+  if (ph < 1) {
+    const x0 = (0.35 + rnd(fx.seed, k, 10) * 0.6) * W;
+    const y0 = rnd(fx.seed, k, 11) * H * 0.35;
+    const dx = -0.9, dy = 0.42;
+    const hx = x0 + dx * ph * W * 0.45;
+    const hy = y0 + dy * ph * W * 0.45;
+    const tail = 220 * u * fx.size;
+    const g = ctx.createLinearGradient(hx, hy, hx - dx * tail, hy - dy * tail);
+    g.addColorStop(0, withAlpha(fx.color, 0.95));
+    g.addColorStop(1, withAlpha(fx.color, 0));
+    ctx.globalAlpha = Math.sin(ph * Math.PI);
+    ctx.strokeStyle = g;
+    ctx.lineWidth = 2.5 * u * fx.size;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(hx, hy);
+    ctx.lineTo(hx - dx * tail, hy - dy * tail);
+    ctx.stroke();
+  }
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
+}
+
+const BOKEH_PALETTE = ['#ffd08a', '#ff9a6b', '#ffe6b0', '#9fd3ff', '#ff7aa8'];
+
+function bokeh(d: DrawContext): void {
+  const { ctx, W, H, u, t, fx } = d;
+  const n = Math.round(22 * fx.intensity);
+  ctx.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < n; i++) {
+    const r = (40 + rnd(fx.seed, i, 1) * 90) * u * fx.size;
+    const x = mod(rnd(fx.seed, i, 2) * W + t * fx.speed * (rnd(fx.seed, i, 3) - 0.5) * 40 * u, W + 2 * r) - r;
+    const y = mod(rnd(fx.seed, i, 4) * H - t * fx.speed * (10 + rnd(fx.seed, i, 5) * 25) * u, H + 2 * r) - r;
+    const color = pick(d, i, BOKEH_PALETTE);
+    ctx.globalAlpha = (0.15 + 0.2 * rnd(fx.seed, i, 6)) * (0.7 + 0.3 * Math.sin(t * fx.speed + i));
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, withAlpha(color, 0.9));
+    g.addColorStop(0.75, withAlpha(color, 0.7));
+    g.addColorStop(1, withAlpha(color, 0));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
+}
+
+const PETAL_PALETTE = ['#ffb7c9', '#ff8fb1', '#ffd6e0', '#ffffff'];
+const LEAF_PALETTE = ['#e0782a', '#c4421a', '#e8b13a', '#a0521d', '#d9622b'];
+
+/** Cosas que caen girando y meciéndose (pétalos, hojas). */
+function falling(d: DrawContext, count: number, palette: string[], shape: (s: number) => void): void {
+  const { ctx, W, H, u, t, fx } = d;
+  const n = Math.round(count * fx.intensity);
+  const span = H * 1.2;
+  for (let i = 0; i < n; i++) {
+    const fall = (70 + rnd(fx.seed, i, 1) * 80) * u * fx.speed;
+    const y = mod(t * fall + rnd(fx.seed, i, 2) * span, span) - H * 0.1;
+    const x = mod(rnd(fx.seed, i, 3) * W + Math.sin(t * fx.speed * (0.6 + rnd(fx.seed, i, 4)) + i) * 60 * u + t * 20 * u * fx.speed, W);
+    const s = (12 + rnd(fx.seed, i, 5) * 12) * u * fx.size;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(t * fx.speed * (0.8 + rnd(fx.seed, i, 6) * 1.6) + i);
+    ctx.scale(1, 0.35 + 0.65 * Math.abs(Math.cos(t * fx.speed * 1.7 + i)));
+    ctx.globalAlpha = 0.92;
+    ctx.fillStyle = pick(d, i, palette);
+    shape(s);
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function petals(d: DrawContext): void {
+  const { ctx } = d;
+  falling(d, 40, PETAL_PALETTE, (s) => {
+    ctx.beginPath();
+    ctx.moveTo(0, -s);
+    ctx.bezierCurveTo(s * 0.9, -s * 0.6, s * 0.7, s * 0.7, 0, s);
+    ctx.bezierCurveTo(-s * 0.7, s * 0.7, -s * 0.9, -s * 0.6, 0, -s);
+    ctx.fill();
+  });
+}
+
+function leaves(d: DrawContext): void {
+  const { ctx, u } = d;
+  falling(d, 28, LEAF_PALETTE, (s) => {
+    const L = s * 1.5;
+    ctx.beginPath();
+    ctx.moveTo(0, -L);
+    ctx.quadraticCurveTo(L * 0.8, 0, 0, L);
+    ctx.quadraticCurveTo(-L * 0.8, 0, 0, -L);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(80,30,0,0.45)';
+    ctx.lineWidth = 1.2 * u;
+    ctx.beginPath();
+    ctx.moveTo(0, -L);
+    ctx.lineTo(0, L * 1.15);
+    ctx.stroke();
+  });
+}
+
+function balloons(d: DrawContext): void {
+  const { ctx, W, H, u, t, fx } = d;
+  const n = Math.round(12 * fx.intensity);
+  for (let i = 0; i < n; i++) {
+    const period = (6 + rnd(fx.seed, i, 1) * 4) / fx.speed;
+    const age = mod(t + rnd(fx.seed, i, 2) * period, period) / period;
+    const r = (30 + rnd(fx.seed, i, 3) * 25) * u * fx.size;
+    const x = (0.05 + rnd(fx.seed, i, 4) * 0.9) * W + Math.sin(age * 6 + i) * 25 * u;
+    const y = H + r * 3.5 - (H + r * 7) * age;
+    const color = colorFor(d, i);
+    // Hilo.
+    ctx.globalAlpha = 0.7;
+    ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+    ctx.lineWidth = 1.5 * u;
+    ctx.beginPath();
+    ctx.moveTo(x, y + r * 1.1);
+    ctx.quadraticCurveTo(x + Math.sin(t * 3 + i) * r * 0.4, y + r * 2, x, y + r * 3.2);
+    ctx.stroke();
+    ctx.globalAlpha = 0.95;
+    // Nudo.
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(x, y + r * 0.95);
+    ctx.lineTo(x - r * 0.12, y + r * 1.15);
+    ctx.lineTo(x + r * 0.12, y + r * 1.15);
+    ctx.closePath();
+    ctx.fill();
+    // Globo con brillo.
+    const g = ctx.createRadialGradient(x - r * 0.3, y - r * 0.4, r * 0.05, x, y, r * 1.05);
+    g.addColorStop(0, 'rgba(255,255,255,0.75)');
+    g.addColorStop(0.25, color);
+    g.addColorStop(1, color);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.ellipse(x, y, r * 0.85, r, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+const NOTE_GLYPHS = ['♪', '♫', '♬', '♩'];
+
+function notes(d: DrawContext): void {
+  const { ctx, W, H, u, t, fx } = d;
+  const n = Math.round(16 * fx.intensity);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  for (let i = 0; i < n; i++) {
+    const period = (5 + rnd(fx.seed, i, 1) * 3) / fx.speed;
+    const age = mod(t + rnd(fx.seed, i, 2) * period, period) / period;
+    const s = (40 + rnd(fx.seed, i, 3) * 40) * u * fx.size;
+    const x = (0.05 + rnd(fx.seed, i, 4) * 0.9) * W + Math.sin(age * 7 + i) * 40 * u;
+    const y = H + s - (H + s * 2) * age;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(Math.sin(age * 5 + i) * 0.3);
+    ctx.globalAlpha = Math.min(1, age * 6) * Math.min(1, (1 - age) * 4) * 0.9;
+    ctx.fillStyle = colorFor(d, i);
+    ctx.shadowColor = 'rgba(0,0,0,0.35)';
+    ctx.shadowBlur = 6 * u;
+    ctx.font = `${Math.round(s)}px "Segoe UI Symbol", "Segoe UI", sans-serif`;
+    ctx.fillText(NOTE_GLYPHS[i % NOTE_GLYPHS.length], 0, 0);
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function lightleak(d: DrawContext): void {
+  const { ctx, W, H, t, fx } = d;
+  ctx.globalCompositeOperation = 'lighter';
+  const colors = fx.multicolor ? ['#ff9a3d', '#ff5e7a', '#ffd36b'] : [fx.color, fx.color, fx.color];
+  const phase = (fx.seed % 97) / 10;
+  for (let k = 0; k < 3; k++) {
+    const cx = W * (0.5 + 0.65 * Math.cos(t * 0.25 * fx.speed + k * 2.1 + phase));
+    const cy = H * (0.5 + 0.55 * Math.sin(t * 0.19 * fx.speed + k * 1.7 + phase));
+    const R = H * (0.55 + 0.2 * Math.sin(t * 0.3 * fx.speed + k)) * fx.size;
+    const a = Math.min(1, 0.5 * fx.intensity) * (0.6 + 0.4 * Math.sin(t * 0.7 * fx.speed + k * 2));
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, R);
+    g.addColorStop(0, withAlpha(colors[k], a));
+    g.addColorStop(0.5, withAlpha(colors[k], a * 0.4));
+    g.addColorStop(1, withAlpha(colors[k], 0));
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+  }
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+const SPOT_PALETTE = ['#fff1c2', '#9fd3ff', '#ff8ad8', '#b0ffb0', '#ffd36b'];
+
+function spotlights(d: DrawContext): void {
+  const { ctx, W, H, u, t, fx } = d;
+  const n = Math.max(2, Math.round(4 * fx.intensity));
+  const len = H * 1.35;
+  const half = Math.tan(0.16 * fx.size) * len;
+  ctx.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < n; i++) {
+    const color = pick(d, i, SPOT_PALETTE);
+    const ang = Math.sin(t * fx.speed * (0.6 + rnd(fx.seed, i, 1) * 0.5) + i * 1.3 + rnd(fx.seed, i, 2) * 3) * 0.5;
+    ctx.save();
+    ctx.translate((W * (i + 0.5)) / n, -10 * u);
+    ctx.rotate(ang);
+    const g = ctx.createLinearGradient(0, 0, 0, len);
+    g.addColorStop(0, withAlpha(color, 0.55));
+    g.addColorStop(1, withAlpha(color, 0));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-6 * u, 0);
+    ctx.lineTo(6 * u, 0);
+    ctx.lineTo(half, len);
+    ctx.lineTo(-half, len);
+    ctx.closePath();
+    ctx.fill();
+    const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, 60 * u);
+    glow.addColorStop(0, withAlpha(color, 0.9));
+    glow.addColorStop(1, withAlpha(color, 0));
+    ctx.fillStyle = glow;
+    ctx.fillRect(-60 * u, -60 * u, 120 * u, 120 * u);
+    ctx.restore();
+  }
+  ctx.globalCompositeOperation = 'source-over';
+}
+
 const DRAWERS: Record<OverlayEffect['type'], (d: DrawContext) => void> = {
   hearts,
   fireworks,
@@ -256,6 +539,15 @@ const DRAWERS: Record<OverlayEffect['type'], (d: DrawContext) => void> = {
   snow,
   sparkles,
   bubbles,
+  rain,
+  stars,
+  bokeh,
+  petals,
+  leaves,
+  balloons,
+  notes,
+  lightleak,
+  spotlights,
 };
 
 /** Dibuja un cuadro del efecto sobre un canvas transparente de W×H. */

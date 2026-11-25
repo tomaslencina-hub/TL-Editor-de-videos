@@ -5,7 +5,23 @@
  * el mismo cuadro sale idéntico en la vista previa y en la exportación.
  */
 
-export const OVERLAY_TYPES = ['hearts', 'fireworks', 'confetti', 'snow', 'sparkles', 'bubbles'] as const;
+export const OVERLAY_TYPES = [
+  'hearts',
+  'fireworks',
+  'confetti',
+  'snow',
+  'sparkles',
+  'bubbles',
+  'rain',
+  'stars',
+  'bokeh',
+  'petals',
+  'leaves',
+  'balloons',
+  'notes',
+  'lightleak',
+  'spotlights',
+] as const;
 export type OverlayType = (typeof OVERLAY_TYPES)[number];
 
 export const OVERLAY_LABELS: Record<OverlayType, string> = {
@@ -15,6 +31,15 @@ export const OVERLAY_LABELS: Record<OverlayType, string> = {
   snow: 'Nieve',
   sparkles: 'Brillos',
   bubbles: 'Burbujas',
+  rain: 'Lluvia',
+  stars: 'Cielo estrellado',
+  bokeh: 'Luces bokeh',
+  petals: 'Pétalos',
+  leaves: 'Hojas de otoño',
+  balloons: 'Globos',
+  notes: 'Notas musicales',
+  lightleak: 'Destello de luz',
+  spotlights: 'Luces de escenario',
 };
 
 export const OVERLAY_ICONS: Record<OverlayType, string> = {
@@ -24,6 +49,15 @@ export const OVERLAY_ICONS: Record<OverlayType, string> = {
   snow: '❄',
   sparkles: '✨',
   bubbles: '🫧',
+  rain: '🌧',
+  stars: '⭐',
+  bokeh: '💡',
+  petals: '🌸',
+  leaves: '🍂',
+  balloons: '🎈',
+  notes: '🎵',
+  lightleak: '🌅',
+  spotlights: '🔦',
 };
 
 export interface OverlayEffect {
@@ -49,6 +83,15 @@ export const OVERLAY_DEFAULTS: Record<OverlayType, Omit<OverlayEffect, 'type' | 
   snow: { intensity: 1, size: 1, speed: 1, color: '#ffffff', multicolor: false },
   sparkles: { intensity: 1, size: 1, speed: 1, color: '#fff3b0', multicolor: false },
   bubbles: { intensity: 1, size: 1, speed: 1, color: '#9fe7ff', multicolor: false },
+  rain: { intensity: 1, size: 1, speed: 1, color: '#c8d8ff', multicolor: false },
+  stars: { intensity: 1, size: 1, speed: 1, color: '#ffffff', multicolor: false },
+  bokeh: { intensity: 1, size: 1, speed: 1, color: '#ffd08a', multicolor: true },
+  petals: { intensity: 1, size: 1, speed: 1, color: '#ffb7c9', multicolor: false },
+  leaves: { intensity: 1, size: 1, speed: 1, color: '#e0782a', multicolor: true },
+  balloons: { intensity: 1, size: 1, speed: 1, color: '#ff4d6d', multicolor: true },
+  notes: { intensity: 1, size: 1, speed: 1, color: '#ffffff', multicolor: false },
+  lightleak: { intensity: 1, size: 1, speed: 1, color: '#ff9a3d', multicolor: false },
+  spotlights: { intensity: 1, size: 1, speed: 1, color: '#fff1c2', multicolor: true },
 };
 
 export const DEFAULT_OVERLAY_DURATION = 5;

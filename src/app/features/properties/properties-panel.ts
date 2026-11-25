@@ -13,6 +13,7 @@ import { Icon } from '../../core/ui/icon';
 import { FONT_FAMILIES, TEXT_ANIMATION_LABELS, TEXT_ANIMATIONS, type TextContent } from '../../../../shared/text';
 import { OVERLAY_LABELS, type OverlayEffect } from '../../../../shared/effects';
 import { EQ_BANDS, EQ_LABELS, EQ_MAX_DB, EQ_PRESETS, isNeutralAudioFx, type AudioFx } from '../../../../shared/audio-fx';
+import { FILTER_LABELS, FILTER_TYPES, isFilterClip, isFilterType, makeFilter, type ClipFilter } from '../../../../shared/filters';
 
 interface PropRow {
   prop: AnimatableProp;
@@ -108,6 +109,32 @@ export class PropertiesPanel {
     this.store.dispatch(Commands.setClipAudio(clip.id, patch), mergeKey ? { mergeKey: `${mergeKey}:${clip.id}` } : undefined);
   }
 
+  // ---- filtro ----
+  protected readonly filterTypes = FILTER_TYPES;
+  protected readonly filterLabels = FILTER_LABELS;
+  /** El clip seleccionado es una capa de filtro (afecta a lo de abajo). */
+  protected readonly filterLayer = computed(() => {
+    const clip = this.sel.clip();
+    return !!clip && isFilterClip(clip);
+  });
+
+  protected setFilter(filter: ClipFilter | null, mergeKey?: string): void {
+    const clip = this.sel.clip();
+    if (!clip || this.sel.track()?.locked) return;
+    this.store.dispatch(Commands.setFilter(clip.id, filter), mergeKey ? { mergeKey: `${mergeKey}:${clip.id}` } : undefined);
+  }
+
+  protected setFilterType(type: string): void {
+    const current = this.sel.clip()?.filter;
+    if (!isFilterType(type)) return this.setFilter(null);
+    this.setFilter(current ? { type, amount: current.amount } : makeFilter(type));
+  }
+
+  protected setFilterAmount(amount: number): void {
+    const current = this.sel.clip()?.filter;
+    if (current) this.setFilter({ ...current, amount: Math.min(1, Math.max(0, amount)) }, 'filter-amount');
+  }
+
   // ---- espejado ----
   protected flip(key: 'flipH' | 'flipV'): void {
     const clip = this.sel.clip();
@@ -170,7 +197,9 @@ export class PropertiesPanel {
     const fps = this.store.settings().fps;
     const name = clip.overlay
       ? `Efecto: ${OVERLAY_LABELS[clip.overlay.type]}`
-      : clip.text
+      : isFilterClip(clip)
+        ? `Filtro: ${FILTER_LABELS[clip.filter!.type]}`
+        : clip.text
         ? 'Texto'
         : (this.sel.media()?.name ?? 'Clip');
     return { name, start: formatTimecode(clip.start, fps), duration: formatTimecode(clipDuration(clip), fps) };

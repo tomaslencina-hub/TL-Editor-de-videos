@@ -313,3 +313,20 @@ section {
     }
   }
 }
+
+.filter-section .pick {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 3px 0 6px;
+
+  label {
+    width: 84px;
+    color: var(--text-1);
+    font-size: 12px;
+  }
+  select {
+    flex: 1;
+    min-width: 0;
+  }
+}

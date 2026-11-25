@@ -140,6 +140,37 @@
   }
 
   @if (sel.isVisual()) {
+    <section class="filter-section">
+      <div class="section-title">
+        <span>{{ filterLayer() ? 'Capa de filtro' : 'Filtro' }}</span>
+        @if (clip.filter && !filterLayer()) {
+          <button class="link" (click)="setFilter(null)" title="Quitar el filtro del clip">Quitar</button>
+        }
+      </div>
+      @if (filterLayer()) {
+        <p class="hint">Afecta a todo lo que está debajo mientras dure el clip.</p>
+      }
+      <div class="pick">
+        <label>Tipo</label>
+        <select (change)="setFilterType($any($event.target).value)">
+          @if (!filterLayer()) {
+            <option value="" [selected]="!clip.filter">Ninguno</option>
+          }
+          @for (f of filterTypes; track f) {
+            <option [value]="f" [selected]="clip.filter?.type === f">{{ filterLabels[f] }}</option>
+          }
+        </select>
+      </div>
+      @if (clip.filter; as f) {
+        <div class="row">
+          <label>Intensidad</label>
+          <input type="range" min="0" max="100" step="1" [value]="f.amount * 100" (input)="setFilterAmount(+$any($event.target).value / 100)" />
+          <span class="val">{{ (f.amount * 100).toFixed(0) }}</span><span class="unit">%</span><span></span>
+        </div>
+      }
+    </section>
+
+    @if (!filterLayer()) {
     <section>
       <div class="section-title">
         <span>Transformación</span>
@@ -153,6 +184,7 @@
         <ng-container [ngTemplateOutlet]="propRow" [ngTemplateOutletContext]="{ $implicit: row }" />
       }
     </section>
+    }
 
     @if (!text() && !overlay()) {
     <section>

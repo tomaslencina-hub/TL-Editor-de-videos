@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { audioGain } from '../../../../shared/animation';
 import { AudioFxChain } from './audio-fx-chain';
-import { clipDuration, clipSpeed, type MediaSource, type Project, type Track } from '../../../../shared/model';
+import { clipDuration, clipSpeed, isGeneratedClip, type MediaSource, type Project, type Track } from '../../../../shared/model';
 import { TL_API } from '../ipc/tl-api';
 import { MediaLibraryService } from '../media/media-library.service';
 import { Compositor } from '../render/compositor';
@@ -226,7 +226,7 @@ export class WebGLEngine implements PlaybackEngine {
     const assignment = new Map<Slot, Layer>();
     const pending: Layer[] = [];
     for (const layer of layers) {
-      if (layer.clip.text || layer.clip.overlay || findMedia(project, layer.clip.sourceId)?.kind === 'image') continue;
+      if (isGeneratedClip(layer.clip) || findMedia(project, layer.clip.sourceId)?.kind === 'image') continue;
       const slot = out.slots.find((s) => s.clipId === layer.clip.id && !assignment.has(s));
       if (slot) assignment.set(slot, layer);
       else pending.push(layer);

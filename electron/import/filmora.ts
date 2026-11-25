@@ -11,6 +11,7 @@ import {
 } from '../../shared/model';
 import { EQ_LABELS, type AudioFx } from '../../shared/audio-fx';
 import { makeOverlay, OVERLAY_LABELS, type OverlayType } from '../../shared/effects';
+import { FILTER_LABELS, makeFilter, type FilterType } from '../../shared/filters';
 import { DEFAULT_TEXT } from '../../shared/text';
 import { TRANSITION_LABELS, type TransitionType } from '../../shared/transitions';
 import { ZipReader } from './zip';
@@ -150,15 +151,32 @@ function cleanTitle(text: string): string {
  */
 const TRANSITION_MAP: { re: RegExp; type: TransitionType; exact: boolean }[] = [
   { re: /black|negro/i, type: 'fadeblack', exact: true },
+  { re: /white|blanco/i, type: 'fadewhite', exact: true },
+  { re: /gr[ae]y/i, type: 'fadegrays', exact: true },
+  { re: /flash|burn|light ?leak|destello/i, type: 'flash', exact: false },
   { re: /dissolve|disolv|^fade|cross ?fade|fundido/i, type: 'fade', exact: true },
+  { re: /door/i, type: 'doorway', exact: true },
+  { re: /heart|love|valentin|romance/i, type: 'heart', exact: false },
+  { re: /zoom ?out|alejar/i, type: 'zoomout', exact: true },
   { re: /zoom/i, type: 'zoomin', exact: true },
+  { re: /whip|swish|speed/i, type: 'whipleft', exact: true },
+  { re: /blur|desenfo/i, type: 'blur', exact: true },
+  { re: /spin|rotat|roll/i, type: 'spin', exact: false },
+  { re: /swirl|twist|vortex/i, type: 'swirl', exact: true },
+  { re: /ripple|wave|water|liquid/i, type: 'ripple', exact: false },
+  { re: /glitch|distort|noise/i, type: 'glitch', exact: true },
   { re: /^push|^slide/i, type: 'slideleft', exact: true },
   { re: /moverect|^wipe|barrido/i, type: 'wipeleft', exact: true },
-  { re: /circle|iris/i, type: 'circleopen', exact: true },
+  { re: /iris/i, type: 'circlecrop', exact: true },
+  { re: /circle/i, type: 'circleopen', exact: true },
   { re: /radial|clock/i, type: 'radial', exact: true },
-  { re: /pixel|mosaic/i, type: 'pixelize', exact: true },
+  { re: /blind|shutter|louver|stripe/i, type: 'blinds', exact: true },
+  { re: /squeeze|stretch/i, type: 'squeezeh', exact: true },
+  { re: /split|open/i, type: 'vertopen', exact: false },
+  { re: /mosaic|tile|square|grid/i, type: 'squares', exact: true },
+  { re: /pixel/i, type: 'pixelize', exact: true },
+  { re: /diagonal/i, type: 'diagtl', exact: true },
   { re: /cube|page ?flip|turn/i, type: 'slideleft', exact: false },
-  { re: /door/i, type: 'wiperight', exact: false },
 ];
 
 function transitionFor(t: FTransition): { type: TransitionType; exact: boolean; name: string } {
@@ -177,8 +195,48 @@ function overlayFor(name: string): OverlayType | null {
   if (/confetti|party/i.test(name)) return 'confetti';
   if (/snow|winter|christmas/i.test(name)) return 'snow';
   if (/bubble/i.test(name)) return 'bubbles';
-  if (/sparkl|glitter|particle|star|shine|bokeh/i.test(name)) return 'sparkles';
+  if (/stage|spot ?light|concert|disco/i.test(name)) return 'spotlights';
+  if (/light ?leak|flare|sun ?light|sunbeam/i.test(name)) return 'lightleak';
+  if (/rain|storm/i.test(name)) return 'rain';
+  if (/starry|night sky|galaxy|shooting star/i.test(name)) return 'stars';
+  if (/bokeh/i.test(name)) return 'bokeh';
+  if (/petal|blossom|sakura|flower/i.test(name)) return 'petals';
+  if (/leaf|leaves|autumn|fall/i.test(name)) return 'leaves';
+  if (/balloon/i.test(name)) return 'balloons';
+  if (/music|note|melod/i.test(name)) return 'notes';
+  if (/sparkl|glitter|particle|star|shine/i.test(name)) return 'sparkles';
   return null;
+}
+
+/** Filtro de la biblioteca de Filmora → filtro de SHOTON parecido (o null). */
+function filterFor(name: string): FilterType | null {
+  const table: [RegExp, FilterType][] = [
+    [/horror|terror|scary|creepy/i, 'horror'],
+    [/old ?film|film ?scratch|silent ?movie|retro ?film/i, 'oldfilm'],
+    [/vhs|tape|camcorder|\b90s\b/i, 'vhs'],
+    [/glitch/i, 'glitch'],
+    [/black ?(&|and) ?white|\bb&w\b|mono(chrome)?|gr[ae]yscale/i, 'bw'],
+    [/sepia/i, 'sepia'],
+    [/noir/i, 'noir'],
+    [/vintage|retro/i, 'vintage'],
+    [/cinema|cinematic|movie|hollywood/i, 'cinema'],
+    [/dramatic|drama/i, 'dramatic'],
+    [/vivid|vibrant/i, 'vivid'],
+    [/blur/i, 'blur'],
+    [/vignette/i, 'vignette'],
+    [/grain/i, 'grain'],
+    [/mosaic|pixel/i, 'pixelate'],
+    [/dream|glow/i, 'dream'],
+    [/chromatic|rgb/i, 'rgbsplit'],
+    [/fish ?eye/i, 'fisheye'],
+    [/sketch|pencil|drawing/i, 'sketch'],
+    [/invert|negative/i, 'invert'],
+    [/thermal|heat ?map/i, 'thermal'],
+    [/duotone/i, 'duotone'],
+    [/warm/i, 'warm'],
+    [/cold|cool|frozen/i, 'cold'],
+  ];
+  return table.find(([re]) => re.test(name))?.[1] ?? null;
 }
 
 /** Limpieza de audio, ecualizador y balance de Filmora → AudioFx de SHOTON. */
@@ -439,9 +497,14 @@ export async function importFilmora(wfpPath: string): Promise<FilmoraImportResul
         texts.push(...r.texts);
       } else if (c.type === 8) {
         const name = libraryEffectName(c) ?? libraryName(c) ?? 'sin nombre';
-        const type = overlayFor(name);
+        const filter = filterFor(name);
+        const type = filter ? null : overlayFor(name);
         const dur = (c.tlEnd - c.tlBegin) / TU;
-        if (type && dur > 0) {
+        if (filter && dur > 0) {
+          // Filtro de Filmora sobre la timeline → capa de filtro (afecta a lo de abajo).
+          effects.push({ id: newId('clip'), sourceId: '', start: c.tlBegin / TU, inPoint: 0, outPoint: dur, filter: makeFilter(filter) });
+          substituted.push(`${name} → filtro ${FILTER_LABELS[filter]}`);
+        } else if (type && dur > 0) {
           effects.push({
             id: newId('clip'),
             sourceId: '',
@@ -486,7 +549,7 @@ export async function importFilmora(wfpPath: string): Promise<FilmoraImportResul
   let tn = 0;
   let en = 0;
   for (const t of [...videoTracks].reverse()) {
-    t.name = t.clips.some((c) => c.text) ? `Títulos ${++tn}` : t.clips.every((c) => c.overlay) ? `Efectos ${++en}` : `Video ${++vn}`;
+    t.name = t.clips.some((c) => c.text) ? `Títulos ${++tn}` : t.clips.every((c) => c.overlay || c.filter) ? `Efectos ${++en}` : `Video ${++vn}`;
   }
   if (!videoTracks.length) videoTracks.push({ id: newId('track'), kind: 'video', name: 'Video 1', muted: false, locked: false, clips: [] });
   if (!audioTracks.length) audioTracks.push({ id: newId('track'), kind: 'audio', name: 'Audio 1', muted: false, locked: false, clips: [] });

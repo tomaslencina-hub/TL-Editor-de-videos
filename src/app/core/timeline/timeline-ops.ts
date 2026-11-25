@@ -11,6 +11,7 @@ import {
   clipEnd,
   clipSpeed,
   initialClipDuration,
+  isGeneratedClip,
   nextTrackName,
   sourceTime,
   type Clip,
@@ -25,6 +26,7 @@ import {
 } from '../../../../shared/model';
 import { shiftKeyframes, splitKeyframes } from '../../../../shared/animation';
 import { DEFAULT_OVERLAY_DURATION, type OverlayEffect } from '../../../../shared/effects';
+import { DEFAULT_FILTER_DURATION, type ClipFilter } from '../../../../shared/filters';
 import { subtitleText, type SubtitleStyle, type TextContent } from '../../../../shared/text';
 import { ADJACENT_EPS } from '../../../../shared/transitions';
 
@@ -132,7 +134,7 @@ export function trimLimits(project: Project, clipId: Id, edge: TrimEdge): TrimLi
   const media = findMedia(project, clip.sourceId);
   // Texto e imágenes no tienen un final de material: se pueden estirar sin límite.
   const sourceDuration =
-    clip.text || clip.overlay || media?.kind === 'image' ? Number.POSITIVE_INFINITY : (media?.duration ?? clip.outPoint);
+    isGeneratedClip(clip) || media?.kind === 'image' ? Number.POSITIVE_INFINITY : (media?.duration ?? clip.outPoint);
   const sp = clipSpeed(clip);
   const minDur = 1 / project.settings.fps;
   const others = track.clips.filter((c) => c.id !== clipId);
@@ -516,6 +518,36 @@ export function addOverlayClip(project: Project, overlay: OverlayEffect, start: 
   if (free) return { project: insertClip(project, free.id, clip), clip };
   const added = addTrack(project, 'video', nextNamed(project, 'Efectos'));
   return { project: insertClip(added.project, added.track.id, clip), clip };
+}
+
+/**
+ * Agrega una capa de filtro en `start`. Tiene que quedar encima de lo que se ve en ese rango
+ * (afecta a lo de abajo): usa una pista libre por encima de todo lo que se superpone, o crea una arriba.
+ */
+export function addFilterClip(project: Project, filter: ClipFilter, start: number): { project: Project; clip: Clip } {
+  const clip: Clip = { id: newId('clip'), sourceId: '', start, inPoint: 0, outPoint: DEFAULT_FILTER_DURATION, filter };
+  const end = start + DEFAULT_FILTER_DURATION;
+  const overlaps = (t: Track) => t.clips.some((c) => c.start < end - EPS && clipEnd(c) > start + EPS);
+  const firstBusy = project.tracks.findIndex((t) => t.kind !== 'audio' && overlaps(t));
+  const above = firstBusy < 0 ? project.tracks : project.tracks.slice(0, firstBusy);
+  const free = above.find((t) => t.kind === 'video' && !t.locked);
+  if (free) return { project: insertClip(project, free.id, clip), clip };
+  const added = addTrack(project, 'video', nextNamed(project, 'Filtros'));
+  // addTrack la pone encima de la primera pista de video; los títulos pueden estar más arriba: va arriba de todo.
+  const tracks = [added.track, ...added.project.tracks.filter((t) => t.id !== added.track.id)];
+  return { project: insertClip({ ...added.project, tracks }, added.track.id, clip), clip };
+}
+
+/** Pone, cambia o quita (null) el filtro de un clip. */
+export function setClipFilter(project: Project, clipId: Id, filter: ClipFilter | null): Project {
+  const ref = findClip(project, clipId);
+  if (!ref) return project;
+  // Una capa de filtro sin filtro no tendría sentido: se mantiene el que tiene.
+  if (!filter && !ref.clip.sourceId && !ref.clip.text && !ref.clip.overlay) return project;
+  return updateTrack(project, ref.track.id, (t) => ({
+    ...t,
+    clips: t.clips.map((c) => (c.id === clipId ? { ...c, filter: filter ?? undefined } : c)),
+  }));
 }
 
 function nextNamed(project: Project, base: string): string {
