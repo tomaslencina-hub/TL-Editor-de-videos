@@ -1,4 +1,4 @@
-import { app, safeStorage } from 'electron';
+import { app, net, safeStorage } from 'electron';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import type { AiStatus } from '../../shared/ipc-contract';
@@ -11,6 +11,33 @@ import type { AiStatus } from '../../shared/ipc-contract';
 const API = 'https://generativelanguage.googleapis.com/v1beta';
 /** Si no se puede listar los modelos, se usa este. */
 const FALLBACK_MODEL = 'gemini-2.5-flash';
+
+/** Explica un error de red (el "fetch failed" pelado no dice nada). */
+function networkError(e: unknown): Error {
+  const err = e as { message?: string; cause?: { code?: string; message?: string } };
+  const detail = [err.cause?.code, err.cause?.message, err.message].filter(Boolean).join(' – ');
+  return new Error(
+    `No se pudo conectar con Gemini (${detail || 'error de red'}). Revisá la conexión a internet; si usás antivirus con ` +
+      'análisis de HTTPS, VPN o proxy, puede estar bloqueando la conexión.',
+  );
+}
+
+/**
+ * fetch con la pila de red de Chromium (`net.fetch`): usa el proxy, los certificados y el IPv6
+ * configurados en Windows, igual que el navegador. Reintenta los cortes de conexión.
+ */
+async function httpFetch(url: string, init: RequestInit): Promise<Response> {
+  let last: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return await net.fetch(url, init);
+    } catch (e) {
+      last = e;
+      await new Promise((r) => setTimeout(r, attempt === 0 ? 800 : 2500));
+    }
+  }
+  throw networkError(last);
+}
 
 let cachedKey: string | null | undefined;
 let model: string | null = null;
@@ -71,7 +98,7 @@ let candidates: string[] = [];
 async function pickModel(key: string): Promise<string> {
   if (model) return model;
   try {
-    const res = await fetch(`${API}/models?pageSize=200`, { headers: headers(key) });
+    const res = await httpFetch(`${API}/models?pageSize=200`, { headers: headers(key) });
     if (!res.ok) throw await apiError(res);
     const body = (await res.json()) as { models?: { name: string; supportedGenerationMethods?: string[] }[] };
     const names = (body.models ?? [])
@@ -131,7 +158,7 @@ export async function aiGenerate(request: unknown): Promise<unknown> {
   for (const m of order) {
     const body = JSON.stringify(m === first ? request : withoutSignatures(request));
     for (let attempt = 0; attempt < 3; attempt++) {
-      const res = await fetch(`${API}/models/${m}:generateContent`, { method: 'POST', headers: headers(key), body });
+      const res = await httpFetch(`${API}/models/${m}:generateContent`, { method: 'POST', headers: headers(key), body });
       if (res.ok) {
         model = m;
         return res.json();
