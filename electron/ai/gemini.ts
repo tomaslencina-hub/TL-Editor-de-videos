@@ -60,9 +60,13 @@ async function apiError(res: Response): Promise<Error> {
   return new Error(`Gemini respondió ${res.status}${detail ? `: ${detail}` : ''}`);
 }
 
+/** Modelos candidatos, del preferido al último recurso (se completa al validar la clave). */
+let candidates: string[] = [];
+
 /**
- * Elige el modelo "flash" estable más nuevo que admita generateContent (son los del nivel gratuito).
- * Los nombres cambian con el tiempo, por eso se consulta la lista en vez de fijarlo.
+ * Arma la lista de modelos "flash" estables que admiten generateContent (los del nivel gratuito):
+ * primero los flash del más nuevo al más viejo y después los flash-lite. Los nombres cambian con el
+ * tiempo, por eso se consulta la lista en vez de fijarlos.
  */
 async function pickModel(key: string): Promise<string> {
   if (model) return model;
@@ -73,14 +77,16 @@ async function pickModel(key: string): Promise<string> {
     const names = (body.models ?? [])
       .filter((m) => m.supportedGenerationMethods?.includes('generateContent'))
       .map((m) => m.name.replace(/^models\//, ''))
-      .filter((n) => /^gemini-[\d.]+-flash$/.test(n));
+      .filter((n) => /^gemini-[\d.]+-flash(-lite)?$/.test(n));
     const version = (n: string) => parseFloat(/^gemini-([\d.]+)/.exec(n)?.[1] ?? '0');
-    names.sort((a, b) => version(b) - version(a));
-    model = names[0] ?? FALLBACK_MODEL;
+    const lite = (n: string) => (n.endsWith('-lite') ? 1 : 0);
+    names.sort((a, b) => lite(a) - lite(b) || version(b) - version(a));
+    candidates = names.length ? names : [FALLBACK_MODEL];
   } catch (e) {
     if (e instanceof Error && /clave/.test(e.message)) throw e;
-    model = FALLBACK_MODEL;
+    candidates = [FALLBACK_MODEL];
   }
+  model = candidates[0];
   return model;
 }
 
@@ -103,16 +109,46 @@ export async function aiSetKey(key: string | null): Promise<AiStatus> {
   return { hasKey: true, model: m };
 }
 
-/** Un turno de generateContent. `request` es el cuerpo de la API (contents, tools, systemInstruction…). */
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Quita las firmas de pensamiento: son propias del modelo que las generó y otro modelo puede rechazarlas. */
+function withoutSignatures(request: unknown): unknown {
+  return JSON.parse(JSON.stringify(request), (k, v) => (k === 'thoughtSignature' ? undefined : v));
+}
+
+/**
+ * Un turno de generateContent. `request` es el cuerpo de la API (contents, tools, systemInstruction…).
+ * Si el modelo está saturado (503/500) reintenta con espera; si sigue saturado o se agotó su cupo
+ * gratuito (429, que es por modelo), pasa al siguiente modelo de la lista y se queda con el que funcione.
+ */
 export async function aiGenerate(request: unknown): Promise<unknown> {
   const key = await readKey();
   if (!key) throw new Error('Falta la clave de Gemini.');
-  const m = await pickModel(key);
-  const res = await fetch(`${API}/models/${m}:generateContent`, {
-    method: 'POST',
-    headers: headers(key),
-    body: JSON.stringify(request),
-  });
-  if (!res.ok) throw await apiError(res);
-  return res.json();
+  const first = await pickModel(key);
+  const order = [first, ...candidates.filter((m) => m !== first)].slice(0, 4);
+  let busy = false;
+  let quota = false;
+  for (const m of order) {
+    const body = JSON.stringify(m === first ? request : withoutSignatures(request));
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const res = await fetch(`${API}/models/${m}:generateContent`, { method: 'POST', headers: headers(key), body });
+      if (res.ok) {
+        model = m;
+        return res.json();
+      }
+      if (res.status === 503 || res.status === 500) {
+        busy = true;
+        if (attempt < 2) await sleep(attempt === 0 ? 1500 : 4000);
+        continue;
+      }
+      if (res.status === 429) {
+        quota = true;
+        break;
+      }
+      throw await apiError(res);
+    }
+  }
+  if (busy) throw new Error('Los servidores de Gemini están saturados en este momento (no es un problema de SHOTON ni de tu clave). Probá de nuevo en unos minutos.');
+  if (quota) throw new Error('Se alcanzó el límite gratuito de Gemini (pedidos por minuto o por día). Esperá un momento y probá de nuevo.');
+  throw new Error('Gemini no respondió.');
 }
