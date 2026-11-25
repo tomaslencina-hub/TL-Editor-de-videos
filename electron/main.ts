@@ -19,8 +19,10 @@ let mainWindow: BrowserWindow | null = null;
 if (devUrl) app.commandLine.appendSwitch('disable-http-cache');
 
 // En Windows agrupa la ventana en la barra de tareas con identidad (e ícono) propia, no la de Electron.
-if (process.platform === 'win32') app.setAppUserModelId('com.shoton.editor');
-app.setName('SHOTON');
+// El nombre sale de "productName" del instalador: "SHOTON" (beta/estable) o "SHOTON Dev" (rama dev).
+// Así la versión Dev se instala aparte y usa su propia carpeta de datos (%APPDATA%SHOTON Dev).
+const isDevChannel = /Dev$/.test(app.getName());
+if (process.platform === 'win32') app.setAppUserModelId(isDevChannel ? 'com.shoton.editor.dev' : 'com.shoton.editor');
 
 // `--profile=nombre`: carpeta de datos separada (sesión, caché, modelos). Sirve para probar sin tocar
 // la sesión real del usuario. Tiene que ir antes de cualquier uso de app.getPath('userData').
@@ -48,7 +50,7 @@ function createWindow(): void {
     minWidth: 1000,
     minHeight: 640,
     backgroundColor: '#16171b',
-    title: 'SHOTON',
+    title: app.getName(),
     icon: APP_ICON,
     show: false,
     webPreferences: {

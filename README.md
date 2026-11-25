@@ -23,7 +23,7 @@ Editor de video de escritorio estilo Filmora: **Electron + Angular 22 (standalon
 
 | Rama | Qué pasa al hacer push | Quién lo recibe |
 |---|---|---|
-| `dev` | CI: chequeo de tipos + build (no publica) | nadie: desarrollo diario |
+| `dev` | Se publica **SHOTON Dev** `0.1.N-dev` (prerelease; se conservan las 5 últimas) | quien tenga instalada SHOTON Dev (app aparte, convive con la otra) |
 | `test` | Se publica una **beta** `0.1.N-beta` en GitHub Releases (prerelease) | quienes tengan instalada una beta |
 | `production` | Se publica la **versión estable** `0.1.N` | todos los usuarios |
 

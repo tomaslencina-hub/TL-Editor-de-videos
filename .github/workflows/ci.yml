@@ -1,9 +1,8 @@
-# Verificación rápida en cada push a `dev` y en cada pull request: tipos + build. No publica nada.
+# Verificación rápida en cada pull request: tipos + build. (Los push a dev/test/production ya
+# compilan y publican desde release.yml.)
 name: CI
 
 on:
-  push:
-    branches: [dev]
   pull_request:
 
 jobs:

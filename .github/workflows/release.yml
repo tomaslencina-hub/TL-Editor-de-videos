@@ -1,13 +1,14 @@
-# Publica un instalador de Windows en GitHub Releases al subir a `test` o `production`.
-# La app instalada se actualiza sola desde esas releases (electron-updater):
-#   - production → versión estable  X.Y.N       → la reciben todos los usuarios
-#   - test       → versión beta     X.Y.N-beta  → la reciben solo quienes tienen instalada una beta
+# Publica un instalador de Windows en GitHub Releases en cada push a dev, test o production.
+# La app instalada se actualiza sola desde esas releases (electron-updater), cada una en su canal:
+#   - dev        → "SHOTON Dev" X.Y.N-dev  (app aparte, se instala junto a la otra) → canal dev
+#   - test       → "SHOTON"     X.Y.N-beta → canal beta
+#   - production → "SHOTON"     X.Y.N      → canal estable (todos los usuarios)
 # N es el número de ejecución de este workflow: siempre crece, así cada publicación es más nueva que la anterior.
 name: Release
 
 on:
   push:
-    branches: [test, production]
+    branches: [dev, test, production]
 
 permissions:
   contents: write # crear releases y subir el instalador
@@ -30,17 +31,33 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
-      - name: Calcular versión
+      - name: Calcular versión y canal
         shell: bash
         run: |
           BASE=$(node -p "require('./package.json').version.split('.').slice(0, 2).join('.')")
           VERSION="$BASE.${{ github.run_number }}"
-          if [ "${{ github.ref_name }}" = "test" ]; then
-            VERSION="$VERSION-beta"
-          fi
+          case "${{ github.ref_name }}" in
+            dev)  VERSION="$VERSION-dev";  CHANNEL=dev ;;
+            test) VERSION="$VERSION-beta"; CHANNEL=beta ;;
+            *)    CHANNEL=latest ;;
+          esac
           npm version --no-git-tag-version "$VERSION"
+          if [ "$CHANNEL" = "dev" ]; then
+            # App separada: otro nombre, otro appId (se instala al lado) y otra carpeta de datos.
+            node -e "
+              const fs = require('fs');
+              const p = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+              p.productName = 'SHOTON Dev';
+              p.build.productName = 'SHOTON Dev';
+              p.build.appId = 'com.shoton.editor.dev';
+              p.build.nsis.shortcutName = 'SHOTON Dev';
+              p.build.win.artifactName = 'SHOTON-Dev-Setup-\${version}.\${ext}';
+              fs.writeFileSync('package.json', JSON.stringify(p, null, 2));
+            "
+          fi
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-          echo "Versión: $VERSION"
+          echo "CHANNEL=$CHANNEL" >> "$GITHUB_ENV"
+          echo "Versión: $VERSION (canal $CHANNEL)"
 
       - name: Descargar FFmpeg full (incluye Whisper para subtítulos; va dentro del instalador)
         shell: pwsh
@@ -74,7 +91,6 @@ jobs:
             grep -iE "⨯|error|failed" builder.log | tail -n 10 | while IFS= read -r line; do echo "::error::$line"; done
             exit 1
           fi
-          ls -la release
           for f in release/*.exe release/*.blockmap release/latest.yml; do
             [ -f "$f" ] && echo "::notice::Generado $(basename "$f") ($(( $(stat -c %s "$f") / 1048576 )) MB)"
           done
@@ -85,28 +101,39 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # La app busca "<canal>.yml": las betas leen beta.yml y las estables latest.yml.
-          # Se suben los dos (mismo contenido) para que una beta también pueda pasar a una estable.
-          cp release/latest.yml release/beta.yml
+          # La app busca "<canal>.yml" (dev.yml, beta.yml o latest.yml). electron-builder solo genera
+          # latest.yml: se copia con el nombre del canal y se suben los dos.
           shopt -s nullglob
-          FILES=(release/*.exe release/*.blockmap release/latest.yml release/beta.yml)
-          if [ "${{ github.ref_name }}" = "test" ]; then FLAGS="--prerelease --latest=false"; else FLAGS="--latest"; fi
+          FILES=(release/*.exe release/*.blockmap release/latest.yml)
+          if [ "$CHANNEL" != "latest" ]; then
+            cp release/latest.yml "release/$CHANNEL.yml"
+            FILES+=("release/$CHANNEL.yml")
+          fi
+          if [ "$CHANNEL" = "latest" ]; then FLAGS="--latest"; else FLAGS="--prerelease --latest=false"; fi
           # shellcheck disable=SC2086
           gh release create "v$VERSION" "${FILES[@]}" --target "$GITHUB_SHA" --title "SHOTON $VERSION" \
-            --notes "Versión $VERSION publicada desde la rama ${{ github.ref_name }} (${GITHUB_SHA::7})." $FLAGS
+            --notes "Versión $VERSION (canal $CHANNEL) publicada desde la rama ${{ github.ref_name }} (${GITHUB_SHA::7})." $FLAGS
           gh release view "v$VERSION" --json tagName,isPrerelease,assets \
             --jq '"Publicada \(.tagName) (prerelease=\(.isPrerelease)) con: \([.assets[].name] | join(", "))"' |
             while IFS= read -r line; do echo "::notice::$line"; done
 
-      # Releases sin archivo de actualización (.yml) son intentos fallidos: confunden al actualizador.
-      - name: Limpiar releases incompletas
+      - name: Limpiar releases viejas o incompletas
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh api "repos/${{ github.repository }}/releases?per_page=100" \
+          REPO="${{ github.repository }}"
+          # Sin archivo de actualización (.yml) = intento fallido: confunde al actualizador.
+          gh api "repos/$REPO/releases?per_page=100" \
             --jq ".[] | select(.tag_name != \"v$VERSION\") | select([.assets[].name | endswith(\".yml\")] | any | not) | .tag_name" |
           while IFS= read -r tag; do
             echo "::notice::Borrando release incompleta $tag"
+            gh release delete "$tag" --yes --cleanup-tag
+          done
+          # Las de dev se acumulan rápido: se conservan las 5 más nuevas.
+          gh api "repos/$REPO/releases?per_page=100" \
+            --jq '[.[] | select(.tag_name | endswith("-dev"))] | sort_by(.created_at) | reverse | .[5:] | .[].tag_name' |
+          while IFS= read -r tag; do
+            echo "::notice::Borrando release dev vieja $tag"
             gh release delete "$tag" --yes --cleanup-tag
           done
